@@ -21,5 +21,5 @@ import Debug.Trace
 createTx :: JsonMethod
 createTx = pureMethod $ \obj -> do
   tx <- TX.createTx <$> obj .: "inputs" <*> obj .: "outputs"
-  pure $ pure $ toJSON tx
+  pure $ pure $ object ["tx" .= tx]
 

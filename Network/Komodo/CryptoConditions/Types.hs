@@ -15,7 +15,6 @@ import           Data.Word
 
 import           Network.CryptoConditions.Impl
 import qualified Network.CryptoConditions.Impl as IE
-  (getConditionURI, getFulfillmentBase64, readFulfillmentBase64, IsCondition(..))
 
 import           Network.Komodo.Crypto
 import           Network.Komodo.Data.Aeson
