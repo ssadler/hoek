@@ -29,6 +29,10 @@ data ErrClass =
   | InvalidMethod
   | InvalidProtocol
   | InvalidParams
+
+  -- Old?
+  | TxInvalidFulfillment
+  | TxConditionParseError
   deriving (Enum, Eq, Generic, Show)
 
 instance ToJSON ErrClass where

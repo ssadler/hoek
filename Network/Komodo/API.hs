@@ -13,16 +13,16 @@ import qualified Data.Map as Map
 
 import           Lens.Micro
 
---import Network.Komodo.API.Http as API
---import Network.Komodo.API.Tx as API
-import Network.Komodo.API.Utils as API
-import Network.Komodo.Crypto
-import Network.Komodo.Prelude
+import           Network.Komodo.API.Utils as API
+import           Network.Komodo.API.Tx as API
+import           Network.Komodo.Crypto
+import           Network.Komodo.Prelude
 
 
 methods :: Map.Map String (JsonMethod, String)
 methods = Map.fromList
   [ ("ed25519KeyPair", (generateKeyPair, "Generate an Ed25519 key pair"))
+  , ("createTx",       (createTx, "Create a transaction"))
   ]
 
 

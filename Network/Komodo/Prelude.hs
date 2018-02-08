@@ -8,8 +8,8 @@ import Control.Applicative as ALL
 import Control.Monad.Trans.Except as ALL
 import Control.Monad.Trans.Class as ALL
 
-import Data.Aeson
 import Data.ByteString as ALL (ByteString)
+import Data.ByteString.Lazy as ALL (toStrict)
 import Data.Functor.Identity as ALL
 import Data.Maybe as ALL (fromJust)
 import Data.Monoid as ALL
@@ -18,7 +18,6 @@ import Data.Text as ALL (unpack)
 
 import Network.Komodo.Errors as ALL
 --import Network.Komodo.Data.Utils as ALL
---import Network.Komodo.Data.Aeson as ALL
 
 
 -- Calls fail on exception
