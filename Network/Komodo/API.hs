@@ -22,7 +22,8 @@ import           Network.Komodo.Prelude
 methods :: Map.Map String (JsonMethod, String)
 methods = Map.fromList
   [ ("ed25519KeyPair", (generateKeyPair, "Generate an Ed25519 key pair"))
-  , ("createTx",       (createTx, "Create a transaction"))
+  , ("createTx",       (encodeTx, "Create a transaction"))
+  , ("signTx",         (signTx, "Sign a transaction"))
   ]
 
 

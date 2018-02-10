@@ -1,25 +1,32 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module Network.Komodo.Transaction.Parser where
-
+module Network.Komodo.Transaction.Types where
 
 import Data.Word
 
-import Network.Komodo.CryptoConditions
+import Network.CryptoConditions
 import Network.Komodo.Data.Aeson
+
 
 import Network.Haskoin.Transaction (OutPoint(..))
 
 
+data KTx = KTx
+  { txInputs :: [TxInput]
+  , txOutputs :: [TxOutput]
+  }
+
+
+data InputScript = CCInput Condition
+
 data TxInput = TxInput OutPoint InputScript
+
 
 instance FromJSON TxInput where
   parseJSON = withStrictObject "input" $ \o -> do
     op <- OutPoint <$> o .:- "txid" <*> o .:- "idx"
     TxInput op <$> o .:- "fulfillment"
 
-
-data InputScript = CCInput CryptoCondition
 
 instance FromJSON InputScript where
   parseJSON o = CCInput <$> parseJSON o
@@ -33,4 +40,6 @@ instance FromJSON TxOutput where
     cond <- o .:- "condition"
     pure $ TxOutput amount $ CCOutput cond
 
-data OutputScript = CCOutput CryptoCondition
+data OutputScript = CCOutput Condition
+
+

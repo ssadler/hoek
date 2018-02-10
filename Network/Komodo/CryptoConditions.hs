@@ -9,6 +9,7 @@ module Network.Komodo.CryptoConditions
   ) where
 
 
+import           Crypto.Error
 import qualified Crypto.PubKey.Ed25519 as Ed2
 
 import           Data.Aeson.Types
@@ -53,3 +54,4 @@ fulfillEd25519 _ _ c = c
 readStandardFulfillmentBase64 :: ByteString -> Except Err CryptoCondition
 readStandardFulfillmentBase64 = either throw pure . readFulfillmentBase64
   where throw = throwE . errStr TxInvalidFulfillment
+
