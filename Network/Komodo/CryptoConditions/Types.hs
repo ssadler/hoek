@@ -17,6 +17,7 @@ import           Network.CryptoConditions.Impl
 import qualified Network.CryptoConditions.Impl as IE
 
 import           Network.Komodo.Crypto
+import           Network.Komodo.Crypto.B58Keys
 import           Network.Komodo.Data.Aeson
 import           Network.Komodo.Prelude
 
@@ -43,7 +44,7 @@ instance IsCondition CryptoCondition where
   getFingerprint (Anon _ fp _ _) = fp
 
   getFulfillment (Threshold t subs) = thresholdFulfillment t subs
-  getFulfillment (Ed25519 pk msig) = ed25519Fulfillment pk <$> msig
+  getFulfillment (Ed25519 pk msig) = ed25519Fulfillment pk msig
   getFulfillment (Anon _ _ _ _) = Nothing
 
   getSubtypes (Threshold _ sts) = thresholdSubtypes sts
@@ -51,7 +52,7 @@ instance IsCondition CryptoCondition where
   getSubtypes _                = mempty
 
   parseFulfillment 2 = parseThreshold Threshold
-  parseFulfillment 4 = parseEd25519 (\a b -> Ed25519 a (Just b))
+  parseFulfillment 4 = parseEd25519 Ed25519
 
   verifyMessage (Threshold m subs) = verifyThreshold m subs      
   verifyMessage (Ed25519 pk (Just sig)) = verifyEd25519 pk sig   

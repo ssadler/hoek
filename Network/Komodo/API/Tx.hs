@@ -22,7 +22,7 @@ import Debug.Trace
 
 encodeTx :: JsonMethod
 encodeTx = pureMethod $ \obj -> do
-  ktx <- KTx <$> obj .: "inputs" <*> obj .: "outputs"
+  ktx <- obj .: "tx"
   pure $ do
     tx <- TX.encodeTx ktx
     pure $ object ["tx" .= tx, "txid" .= txHash tx]
@@ -30,8 +30,9 @@ encodeTx = pureMethod $ \obj -> do
 
 signTx :: JsonMethod
 signTx = pureMethod $ \obj -> do
-  act <- TX.signTx <$> obj .: "tx" <*> obj .: "privateKeys"
+  ktx <- obj .: "tx"
+  keys <- obj .: "privateKeys" >>= mapM parseSecretKey
   pure $ do
-    tx <- act
-    pure $ object ["tx" .= tx, "txid" .= txHash tx]
+    signed <- TX.signTx ktx keys
+    pure $ object ["tx" .= signed]
 

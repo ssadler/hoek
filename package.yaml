@@ -55,7 +55,7 @@ executables:
 
 tests:
   hoek-test:
-    main:                Spec.hs
+    main:                Tests.hs
     source-dirs:         test
     ghc-options:
     - -threaded
@@ -63,3 +63,5 @@ tests:
     - -with-rtsopts=-N
     dependencies:
     - hoek
+    - tasty
+    - tasty-hunit

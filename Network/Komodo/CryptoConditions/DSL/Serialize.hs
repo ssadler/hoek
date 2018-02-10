@@ -12,6 +12,7 @@ import qualified Data.Text as T
 import qualified Data.List as List
 
 import Network.Komodo.Crypto
+import Network.Komodo.Crypto.B58Keys
 import Network.Komodo.CryptoConditions.DSL.Parse
 import Network.Komodo.CryptoConditions.Types
 import Network.Komodo.Prelude

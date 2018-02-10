@@ -9,6 +9,7 @@ import Data.Attoparsec.Text
 import qualified Data.Text as T
 
 import Network.Komodo.Crypto
+import Network.Komodo.Crypto.B58Keys
 import Network.Komodo.CryptoConditions.Types
 import Network.Komodo.Prelude
 

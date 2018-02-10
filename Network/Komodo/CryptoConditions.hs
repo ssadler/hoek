@@ -16,6 +16,7 @@ import           Data.Aeson.Types
 import           Data.Text.Encoding (encodeUtf8)
 
 import           Network.Komodo.Crypto
+import           Network.Komodo.Crypto.B58Keys
 import           Network.Komodo.CryptoConditions.DSL as DSL
 import           Network.Komodo.CryptoConditions.Types as Types
 import           Network.Komodo.Prelude

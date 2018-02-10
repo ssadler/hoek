@@ -9,6 +9,7 @@ module Network.Komodo.Crypto.B58Keys
   , toData
   , parseKey
   , unsafeParseKey
+  , parseSecretKey
   ) where
 
 import Control.Monad.Trans.Except
@@ -105,3 +106,8 @@ toData = BS.pack . BA.unpack
 b58 :: BS.ByteString -> String
 b58 = BS8.unpack . encodeBase58 bitcoinAlphabet
 
+
+parseSecretKey :: Value -> Parser Ed2.SecretKey
+parseSecretKey val = do
+  (SK sk) <- parseJSON val
+  pure $ sk
