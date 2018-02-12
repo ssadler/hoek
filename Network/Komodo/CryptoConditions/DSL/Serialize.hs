@@ -18,6 +18,8 @@ import Network.Komodo.CryptoConditions.Types
 import Network.Komodo.Prelude
 
 
+type CryptoCondition = Condition
+
 serializeDSL :: CryptoCondition -> (T.Text, [PublicKey])
 serializeDSL cond = runState (serialize cond) []
 

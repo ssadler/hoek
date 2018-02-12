@@ -27,22 +27,20 @@ encodeTx :: KTx -> Except Err Tx
 encodeTx (KTx ins outs) = do
   txIns <- mapM toTxIn ins
   pure $ HTx.createTx 1 txIns (toTxOut <$> outs) 0
+  where
+    toTxIn :: TxInput -> Except Err TxIn
+    toTxIn (TxInput outpoint (CCInput cond)) =
+      case getFulfillment cond of
+           Just ffillBin ->
+             let script = Script [opPushData ffillBin]
+              in pure $ TxIn outpoint (encode script) 0
+           Nothing -> throwE $ errStr TxInvalidFulfillment "Unfulfillable condition"
 
-
-toTxIn :: TxInput -> Except Err TxIn
-toTxIn (TxInput outpoint (CCInput cond)) =
-  case getFulfillment cond of
-       Just ffillBin ->
-         let script = Script [opPushData ffillBin]
-          in pure $ TxIn outpoint (encode script) 0
-       Nothing -> throwE $ errStr TxInvalidFulfillment "Unfulfillable condition"
-
-
-toTxOut :: TxOutput -> TxOut
-toTxOut (TxOutput amount (CCOutput cond)) =
-  let condBin = encodeCondition cond
-      script = Script [opPushData condBin, OP_CHECKCRYPTOCONDITIONVERIFY]
-   in TxOut amount $ encode script
+    toTxOut :: TxOutput -> TxOut
+    toTxOut (TxOutput amount (CCOutput cond)) =
+      let condBin = encodeCondition cond
+          script = Script [opPushData condBin, OP_CHECKCRYPTOCONDITIONVERIFY]
+       in TxOut amount $ encode script
 
 
 signTx :: KTx -> [SecretKey] -> Except Err KTx

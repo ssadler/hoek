@@ -14,6 +14,9 @@ import Network.Komodo.CryptoConditions.Types
 import Network.Komodo.Prelude
 
 
+type CryptoCondition = Condition
+
+
 parseDSL :: T.Text -> Except Err CryptoCondition
 parseDSL t = complete $ parse dslParser t
   where

@@ -3,6 +3,7 @@
 module Network.Komodo.Data.Aeson
   ( module DA
   , module DAT 
+  , StrictObject
   , withStrictObject
   , (.:-)
   , (.:-?)
