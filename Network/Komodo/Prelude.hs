@@ -14,7 +14,7 @@ import Data.Functor.Identity as ALL
 import Data.Maybe as ALL (fromJust)
 import Data.Monoid as ALL
 import Data.Set as ALL (Set)
-import Data.Text as ALL (unpack)
+import Data.Text as ALL (Text, unpack)
 
 import Network.Komodo.Errors as ALL
 --import Network.Komodo.Data.Utils as ALL

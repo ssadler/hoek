@@ -14,6 +14,7 @@ import           Data.Word
 
 import           Network.Komodo.CryptoConditions
 import           Network.Komodo.Data.Aeson
+import           Network.Komodo.Prelude
 
 import qualified Network.Haskoin.Crypto as Haskoin
 import qualified Network.Haskoin.Transaction as Haskoin
@@ -46,7 +47,7 @@ data TxInput = TxInput Haskoin.OutPoint InputScript
 
 instance ToJSON TxInput where
   toJSON (TxInput (Haskoin.OutPoint txid idx) ins) =
-    object ["txid" .= txid, "idx" .= idx, "fulfillment" .= ins]
+     object ["txid" .= txid, "idx" .= idx, inputScriptToJSON ins]
 
 
 instance FromJSON TxInput where
@@ -62,20 +63,20 @@ data InputScript = CCInput Condition
   deriving (Eq, Show)
 
 
-instance FromJSON InputScript where
-  parseJSON = withStrictObject "inputScript" parseInputScript
-
-
 parseInputScript :: StrictObject -> Parser InputScript
-parseInputScript o = 
-  getCC <|> getAddress <|> fail "Input must contain fulfillment or address"
+parseInputScript o = do
+  act <- (getCC <$> o .:- "fulfillment")
+     <|> (getAddress <$> o .:- "address")
+     <|> fail "Input must contain fulfillment or address"
+  act
   where
-    getCC = do B58Condition cond <- o .:- "fulfillment"; pure (CCInput cond)
-    getAddress = do AddressInput <$> o .:- "address" <*> pure Nothing
+    getCC val = do B58Condition cond <- parseJSON val; pure (CCInput cond)
+    getAddress val = do AddressInput <$> parseJSON val <*> pure Nothing
 
 
-instance ToJSON InputScript where
-  toJSON (CCInput cond) = toJSON $ B58Condition cond
+inputScriptToJSON :: InputScript -> (Text, Value)
+inputScriptToJSON (CCInput cond) = "fulfillment" .= cond
+inputScriptToJSON (AddressInput addr _) = "address" .= addr
 
 
 -- | TxOutput

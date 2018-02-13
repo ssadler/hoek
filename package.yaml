@@ -65,3 +65,4 @@ tests:
     - hoek
     - tasty
     - tasty-hunit
+    - QuickCheck

@@ -23,7 +23,8 @@ methods :: Map.Map String (JsonMethod, String)
 methods = Map.fromList
   [ ("ed25519KeyPair", (generateKeyPair, "Generate an Ed25519 key pair"))
   , ("encodeTx",       (encodeTx, "Encode a transaction"))
-  , ("signTx",         (signTx, "Sign a transaction"))
+  , ("signTxBitcoin",  (signTxBitcoin, "Sign Secp256k1 script inputs"))
+  , ("signTxEd25519",  (signTxEd25519, "Sign Ed25519 condition nodes"))
   ]
 
 

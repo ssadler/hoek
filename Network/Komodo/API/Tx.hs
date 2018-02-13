@@ -28,11 +28,20 @@ encodeTx = pureMethod $ \obj -> do
     pure $ object ["tx" .= tx, "txid" .= txHash tx]
 
 
-signTx :: JsonMethod
-signTx = pureMethod $ \obj -> do
+signTxEd25519 :: JsonMethod
+signTxEd25519 = pureMethod $ \obj -> do
   ktx <- obj .: "tx"
   keys <- obj .: "privateKeys" >>= mapM parseSecretKey
   pure $ do
-    signed <- TX.signTx ktx keys
+    signed <- TX.signTxEd25519 ktx keys
+    pure $ object ["tx" .= signed]
+
+
+signTxBitcoin :: JsonMethod
+signTxBitcoin = pureMethod $ \obj -> do
+  ktx <- obj .: "tx"
+  keys <- obj .: "privateKeys" >>= mapM parseSecretKey
+  pure $ do
+    signed <- TX.signTxBitcoin ktx keys
     pure $ object ["tx" .= signed]
 
