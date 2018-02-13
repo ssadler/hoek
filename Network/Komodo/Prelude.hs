@@ -15,6 +15,7 @@ import Data.Maybe as ALL (fromJust)
 import Data.Monoid as ALL
 import Data.Set as ALL (Set)
 import Data.Text as ALL (Text, unpack)
+import Data.Text.Encoding as ALL (encodeUtf8, decodeUtf8)
 
 import Network.Komodo.Errors as ALL
 --import Network.Komodo.Data.Utils as ALL

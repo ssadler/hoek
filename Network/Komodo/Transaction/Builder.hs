@@ -17,6 +17,9 @@ import           Network.Komodo.Transaction.Types
 import           Network.Haskoin.Script
 import           Network.Haskoin.Transaction (Tx(..), TxHash, TxIn(..), TxOut(..), OutPoint(..))
 import qualified Network.Haskoin.Transaction as HTx
+import qualified Network.Haskoin.Crypto as Haskoin
+import qualified Network.Haskoin.Transaction as Haskoin
+import qualified Network.Haskoin.Script as Haskoin
 import           Network.Haskoin.Util
 
 
@@ -58,10 +61,10 @@ signInputEd25519 keys message (TxInput op (CCInput cond)) =
 signInputEd25519 _ _ i = i
 
 
-signTxBitcoin :: KTx -> [SecretKey] -> Except Err KTx
+signTxBitcoin :: KTx -> [Haskoin.PrvKey] -> Except Err KTx
 signTxBitcoin (KTx ins outs) keys = pure $
   KTx (signInputBitcoin keys "" <$> ins) outs
 
 
-signInputBitcoin :: [SecretKey] -> ByteString -> TxInput -> TxInput
+signInputBitcoin :: [Haskoin.PrvKey] -> ByteString -> TxInput -> TxInput
 signInputBitcoin keys message = id

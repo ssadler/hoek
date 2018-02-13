@@ -9,6 +9,7 @@ import           Data.Serialize
 
 import           Network.Haskoin.Util (encodeHex)
 import           Network.Haskoin.Transaction
+import qualified Network.Haskoin.Crypto as Haskoin
 import           Network.Komodo.API.Utils
 import           Network.Komodo.Crypto
 import           Network.Komodo.Prelude
@@ -40,8 +41,11 @@ signTxEd25519 = pureMethod $ \obj -> do
 signTxBitcoin :: JsonMethod
 signTxBitcoin = pureMethod $ \obj -> do
   ktx <- obj .: "tx"
-  keys <- obj .: "privateKeys" >>= mapM parseSecretKey
+  keys <- obj .: "privateKeys" >>= mapM parseBitcoinWif
   pure $ do
     signed <- TX.signTxBitcoin ktx keys
     pure $ object ["tx" .= signed]
-
+  where
+    parseBitcoinWif txt =
+      let mkey = Haskoin.fromWif $ encodeUtf8 txt
+       in maybe (fail "invalid (non-WIF) private key") pure mkey

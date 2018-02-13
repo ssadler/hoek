@@ -100,4 +100,3 @@ instance FromJSON TxOutput where
 data OutputScript = CCOutput Condition
   deriving (Eq, Show)
 
-
