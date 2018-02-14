@@ -12,6 +12,7 @@ import           Network.Haskoin.Test.Crypto
 import           Network.Haskoin.Constants
 import           Network.Komodo.Prelude
 import           Network.Komodo.Transaction
+import           Network.Komodo.CryptoConditions
 
 import           Test.QuickCheck
 import           Test.Tasty
@@ -22,30 +23,24 @@ import           TestSupport
 
 transactionTests :: TestTree
 transactionTests = testGroup "testUnits"
-  [ testSignInput
-  , testWat
+  [ testSignInputEd25519
+  , testSignTxEd25519
   ]
 
 
-testSignInput :: TestTree
-testSignInput = testCase "sign an input" $
+testSignInputEd25519 :: TestTree
+testSignInputEd25519 = testCase "sign an input" $
   assertEqual "input is equal"
     (TxInput outPoint0 $ CCInput ed2BobF) 
-    (signInput [skBob] umsg $ TxInput outPoint0 $ CCInput ed2Bob)
+    (signInputEd25519 [skBob] umsg $ TxInput outPoint0 $ CCInput ed2Bob)
 
 
-testWat :: TestTree
-testWat = testCase "stufff" $ do
-  encode <$> sample' arbitraryAddress >>= print
-  --encode <$> sample' arbitraryPrvKey >>= print
-  return ()
-
-
-testIntegration :: TestTree
-testIntegration = testCase "do all the things" $
-  let inputs = [TxInput outPoint0 (CCInput ed2Alice)]
+testSignTxEd25519 :: TestTree
+testSignTxEd25519 = testCase "sign transaction Ed25519 input" $
+  let inputs = [TxInput outPoint0 (CCInput ed2Bob)]
       outputs = [TxOutput 1 (CCOutput ed2Alice)]
       tx = KTx inputs outputs
-      Right signed = runExcept $ signTxEd25519 tx [skAlice]
-  in assertBool "signed tx is different..." $
-      signed /= tx
+      res = runExcept $ signTxEd25519 tx [skBob]
+  in assertBool "Input condition is fulfilled" $
+      let Right (KTx [TxInput _ (CCInput cond)] _) = res
+       in conditionIsSigned cond

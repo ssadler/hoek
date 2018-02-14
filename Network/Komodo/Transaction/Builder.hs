@@ -41,11 +41,12 @@ encodeTx (KTx ins outs) = do
     toTxIn (TxInput outpoint (AddressInput addr mscript)) =
       throwE $ errStr TxInvalidFulfillment "Can't encode address as input"
 
-    toTxOut :: TxOutput -> TxOut
-    toTxOut (TxOutput amount (CCOutput cond)) =
-      let condBin = encodeCondition cond
-          script = Script [opPushData condBin, OP_CHECKCRYPTOCONDITIONVERIFY]
-       in TxOut amount $ encode script
+
+toTxOut :: TxOutput -> TxOut
+toTxOut (TxOutput amount (CCOutput cond)) =
+  let condBin = encodeCondition cond
+      script = Script [opPushData condBin, OP_CHECKCRYPTOCONDITIONVERIFY]
+   in TxOut amount $ encode script
 
 
 signTxEd25519 :: KTx -> [SecretKey] -> Except Err KTx
@@ -54,7 +55,7 @@ signTxEd25519 (KTx ins outs) keys = pure $
 
 
 signInputEd25519 :: [SecretKey] -> ByteString -> TxInput -> TxInput
-signInputEd25519 keys message (TxInput op (CCInput cond)) = 
+signInputEd25519 keys message (TxInput op (CCInput cond)) =
   let sign c sk = fulfillEd25519 (toPublic sk) sk message c
       cond' = foldl sign cond keys
    in TxInput op (CCInput cond')
@@ -62,9 +63,24 @@ signInputEd25519 _ _ i = i
 
 
 signTxBitcoin :: KTx -> [Haskoin.PrvKey] -> Except Err KTx
-signTxBitcoin (KTx ins outs) keys = pure $
-  KTx (signInputBitcoin keys "" <$> ins) outs
+signTxBitcoin (KTx ins outs) keys = 
+  let sigInputs = [ Haskoin.SigInput (Haskoin.PayPKHash h160) op sigType Nothing
+                  | TxInput op (AddressInput (Haskoin.PubKeyAddress h160) _) <- ins
+                  ]
+      sigType = Haskoin.SigAll False
+      txIns = [TxIn op "" 0 | TxInput op _ <- ins]
+      tx = HTx.createTx 1 txIns (toTxOut <$> outs) 0
+      eSigned@(Right signed) = HTx.signTx tx sigInputs keys
+      newIns = zipWith mergeScript ins (Haskoin.txIn signed)
+  in pure (KTx newIns outs)
+  where
+    mergeScript :: TxInput -> TxIn -> TxInput
+    mergeScript t@(TxInput op (AddressInput addr _)) (Haskoin.TxIn _ bs _) =
+      if bs == mempty then t else TxInput op (AddressInput addr $ Just bs)
+    mergeScript t _ = t
 
 
-signInputBitcoin :: [Haskoin.PrvKey] -> ByteString -> TxInput -> TxInput
-signInputBitcoin keys message = id
+-- for the purposes of signing an input, it's neccesary to encode the KTx
+-- to a TX. Only the signature script of the input in question is important
+-- to consider, the others will be nullified anyway. In order to generate it,
+-- derive the output script from the private key.

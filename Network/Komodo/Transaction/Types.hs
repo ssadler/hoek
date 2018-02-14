@@ -10,6 +10,7 @@ module Network.Komodo.Transaction.Types
   ) where
 
 import           Control.Applicative
+import           Data.ByteString.Base58
 import           Data.Word
 
 import           Network.Komodo.CryptoConditions
@@ -47,7 +48,7 @@ data TxInput = TxInput Haskoin.OutPoint InputScript
 
 instance ToJSON TxInput where
   toJSON (TxInput (Haskoin.OutPoint txid idx) ins) =
-     object ["txid" .= txid, "idx" .= idx, inputScriptToJSON ins]
+     object $ ["txid" .= txid, "idx" .= idx] ++ inputScriptToJSON ins
 
 
 instance FromJSON TxInput where
@@ -59,7 +60,7 @@ instance FromJSON TxInput where
 -- | Input Script
 --
 data InputScript = CCInput Condition
-                 | AddressInput Haskoin.Address (Maybe Haskoin.ScriptInput)
+                 | AddressInput Haskoin.Address (Maybe ByteString)
   deriving (Eq, Show)
 
 
@@ -74,9 +75,11 @@ parseInputScript o = do
     getAddress val = do AddressInput <$> parseJSON val <*> pure Nothing
 
 
-inputScriptToJSON :: InputScript -> (Text, Value)
-inputScriptToJSON (CCInput cond) = "fulfillment" .= cond
-inputScriptToJSON (AddressInput addr _) = "address" .= addr
+inputScriptToJSON :: InputScript -> [(Text, Value)]
+inputScriptToJSON (CCInput cond) = ["fulfillment" .= cond]
+inputScriptToJSON (AddressInput addr msig) =
+  let item s = ["inputScript" .= decodeUtf8 (encodeBase58 bitcoinAlphabet s)]
+   in ("address" .= addr) : (maybe [] item msig)
 
 
 -- | TxOutput
