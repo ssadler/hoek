@@ -7,6 +7,7 @@ module Network.Komodo.Errors
   , allErrorClasses
   , errMsg
   , errStr
+  , otherErr
   ) where
 
 
@@ -29,6 +30,7 @@ data ErrClass =
   | InvalidMethod
   | InvalidProtocol
   | InvalidParams
+  | OtherError
 
   -- Old?
   | TxInvalidFulfillment
@@ -49,3 +51,7 @@ errMsg code msg = Err $ object [ "class" .= code, "msg" .= msg ]
 
 errStr :: ErrClass -> String -> Err
 errStr code msg = Err $ object [ "class" .= code, "msg" .= msg ]
+
+
+otherErr :: String -> Err
+otherErr msg = Err $ object [ "class" .= OtherError, "msg" .= msg ]

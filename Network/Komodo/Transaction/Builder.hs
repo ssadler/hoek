@@ -16,37 +16,37 @@ import           Network.Komodo.Prelude
 import           Network.Komodo.Transaction.Types
 import           Network.Haskoin.Script
 import           Network.Haskoin.Transaction (Tx(..), TxHash, TxIn(..), TxOut(..), OutPoint(..))
-import qualified Network.Haskoin.Transaction as HTx
 import qualified Network.Haskoin.Crypto as Haskoin
 import qualified Network.Haskoin.Transaction as Haskoin
 import qualified Network.Haskoin.Script as Haskoin
 import           Network.Haskoin.Util
 
 
-import Debug.Trace
-
-
 encodeTx :: KTx -> Except Err Tx
 encodeTx (KTx ins outs) = do
   txIns <- mapM toTxIn ins
-  pure $ HTx.createTx 1 txIns (toTxOut <$> outs) 0
+  pure $ Haskoin.createTx 1 txIns (toTxOut <$> outs) 0
   where
     toTxIn :: TxInput -> Except Err TxIn
     toTxIn (TxInput outpoint (CCInput cond)) =
+      -- TODO: Check fulfilled
       case getFulfillment cond of
            Just ffillBin ->
              let script = Script [opPushData ffillBin]
               in pure $ TxIn outpoint (encode script) 0
            Nothing -> throwE $ errStr TxInvalidFulfillment "Unfulfillable condition"
-    toTxIn (TxInput outpoint (AddressInput addr mscript)) =
-      throwE $ errStr TxInvalidFulfillment "Can't encode address as input"
+    toTxIn (TxInput op (ScriptInput s)) = pure $ TxIn op s 0
+    toTxIn (TxInput _ inp) =
+      throwE $ otherErr $ "Can't encode unsigned input: " ++ show inp
 
 
 toTxOut :: TxOutput -> TxOut
-toTxOut (TxOutput amount (CCOutput cond)) =
-  let condBin = encodeCondition cond
-      script = Script [opPushData condBin, OP_CHECKCRYPTOCONDITIONVERIFY]
-   in TxOut amount $ encode script
+toTxOut (TxOutput amount script) = TxOut amount $ encode $
+  case script of
+    (CCOutput cond) ->
+      Script [opPushData $ encodeCondition cond, OP_CHECKCRYPTOCONDITION]
+    (AddressOutput addr) ->
+      Haskoin.encodeOutput $ Haskoin.addressToOutput addr
 
 
 signTxEd25519 :: KTx -> [SecretKey] -> Except Err KTx
@@ -64,20 +64,25 @@ signInputEd25519 _ _ i = i
 
 signTxBitcoin :: KTx -> [Haskoin.PrvKey] -> Except Err KTx
 signTxBitcoin (KTx ins outs) keys = 
-  let sigInputs = [ Haskoin.SigInput (Haskoin.PayPKHash h160) op sigType Nothing
-                  | TxInput op (AddressInput (Haskoin.PubKeyAddress h160) _) <- ins
-                  ]
-      sigType = Haskoin.SigAll False
+  let sigInputs = mapMaybe getSigInput ins
       txIns = [TxIn op "" 0 | TxInput op _ <- ins]
-      tx = HTx.createTx 1 txIns (toTxOut <$> outs) 0
-      eSigned@(Right signed) = HTx.signTx tx sigInputs keys
+      tx = Haskoin.createTx 1 txIns (toTxOut <$> outs) 0
+      eSigned@(Right signed) = Haskoin.signTx tx sigInputs keys
       newIns = zipWith mergeScript ins (Haskoin.txIn signed)
   in pure (KTx newIns outs)
   where
     mergeScript :: TxInput -> TxIn -> TxInput
-    mergeScript t@(TxInput op (AddressInput addr _)) (Haskoin.TxIn _ bs _) =
-      if bs == mempty then t else TxInput op (AddressInput addr $ Just bs)
+    mergeScript t@(TxInput op _) (Haskoin.TxIn _ bs _) =
+      if bs == mempty then t else TxInput op (ScriptInput bs)
     mergeScript t _ = t
+
+    getSigInput (TxInput op script) =
+      let toSigInput inp = Haskoin.SigInput inp op sigType Nothing
+          sigType = Haskoin.SigAll False
+       in toSigInput <$> case script of
+               AddressInput (Haskoin.PubKeyAddress h160) -> Just (Haskoin.PayPKHash h160)
+               PubKeyInput pk                            -> Just (Haskoin.PayPK pk)
+               _                                         -> Nothing
 
 
 -- for the purposes of signing an input, it's neccesary to encode the KTx

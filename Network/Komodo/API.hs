@@ -22,9 +22,11 @@ import           Network.Komodo.Prelude
 methods :: Map.Map String (JsonMethod, String)
 methods = Map.fromList
   [ ("ed25519KeyPair", (generateKeyPair, "Generate an Ed25519 key pair"))
-  , ("encodeTx",       (encodeTx, "Encode a transaction"))
+  , ("encodeTx",       (encodeTx, "Encode a transaction to hex"))
+  , ("decodeTx",       (decodeTx, "Decode a transaction from hex"))
   , ("signTxBitcoin",  (signTxBitcoin, "Sign Secp256k1 script inputs"))
   , ("signTxEd25519",  (signTxEd25519, "Sign Ed25519 condition nodes"))
+  , ("decodeScript",   (decodeScript, "Decode a script"))
   ]
 
 

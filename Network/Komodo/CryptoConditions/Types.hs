@@ -36,6 +36,10 @@ instance ToJSON B58Condition where
              , "threshold" .= n
              , "subfulfillments" .= (toJSON <$> subs)
              ]
+    Anon _ _ _ _ ->
+      object [ "type" .= ("condition" :: String)
+             , "uri" .= getConditionURI cond
+             ]
 
 
 instance FromJSON B58Condition where

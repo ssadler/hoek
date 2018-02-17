@@ -3,15 +3,15 @@ module Network.Komodo.Prelude
   , exceptToFail
   ) where
 
-import Control.Monad as ALL (join, when)
 import Control.Applicative as ALL
+import Control.Monad as ALL (join, when)
 import Control.Monad.Trans.Except as ALL
 import Control.Monad.Trans.Class as ALL
 
 import Data.ByteString as ALL (ByteString)
 import Data.ByteString.Lazy as ALL (toStrict)
 import Data.Functor.Identity as ALL
-import Data.Maybe as ALL (fromJust)
+import Data.Maybe as ALL (fromJust, mapMaybe)
 import Data.Monoid as ALL
 import Data.Set as ALL (Set)
 import Data.Text as ALL (Text, unpack)
