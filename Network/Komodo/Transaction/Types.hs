@@ -7,6 +7,7 @@ module Network.Komodo.Transaction.Types
   , InputScript(..)
   , TxOutput(..)
   , OutputScript(..)
+  , Haskoin.TxHash(..)
   ) where
 
 import           Control.Applicative

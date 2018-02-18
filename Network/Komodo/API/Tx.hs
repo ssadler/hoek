@@ -14,9 +14,7 @@ import qualified Network.Haskoin.Script as Haskoin
 import           Network.Komodo.API.Utils
 import           Network.Komodo.Crypto
 import           Network.Komodo.Prelude
-import qualified Network.Komodo.Transaction.Builder as TX
-import qualified Network.Komodo.Transaction.Decode as TX
-import           Network.Komodo.Transaction.Types
+import qualified Network.Komodo.Transaction as TX
 
 import           Lens.Micro
 
