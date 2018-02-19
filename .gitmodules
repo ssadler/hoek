@@ -1,7 +1,7 @@
 [submodule "ext/haskoin"]
 	path = ext/haskoin
-	url = git@github.com:libscott/haskoin.git
+	url = https://github.com/libscott/haskoin/
 	branch = hoek
 [submodule "ext/cryptoconditions-hs"]
 	path = ext/cryptoconditions-hs
-	url = git@github.com:libscott/cryptoconditions-hs.git
+	url = https://github.com/libscott/cryptoconditions-hs
