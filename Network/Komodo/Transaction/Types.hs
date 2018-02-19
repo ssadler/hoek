@@ -61,8 +61,9 @@ instance FromJSON TxInput where
 
 -- | Input Script
 --
-data InputScript = CCInput Condition
-                 | AddressInput Haskoin.Address
+data InputScript = ConditionInput Condition
+                 | PubKeyHashInput Haskoin.Hash160
+                 | ScriptHashInput Haskoin.Hash160
                  | PubKeyInput Haskoin.PubKey
                  | ScriptInput ByteString
   deriving (Eq, Show)
@@ -79,16 +80,21 @@ instance FromJSON InputScript where
         act <- (getCC <$> o .:- "fulfillment")
            <|> (getAddress <$> o .:- "address")
            <|> (getPubKey <$> o .:- "pubkey")
-           <|> fail "InputScript must contain fulfillment, address or pubkey"
+           <|> fail "inputscript must contain fulfillment, address or pubkey"
         act
-      getCC val = do B58Condition cond <- parseJSON val; pure (CCInput cond)
-      getAddress val = do AddressInput <$> parseJSON val
+      getCC val = do B58Condition cond <- parseJSON val; pure (ConditionInput cond)
+      getAddress val = do 
+          addr <- parseJSON val
+          pure $ case addr of
+                      Haskoin.PubKeyAddress h160 -> PubKeyHashInput h160
+                      Haskoin.ScriptAddress h160 -> ScriptHashInput h160
       getPubKey val = do PubKeyInput <$> parseJSON val
 
 
 instance ToJSON InputScript where
-  toJSON (CCInput cond) = object ["fulfillment" .= cond]
-  toJSON (AddressInput addr) = object ["address" .= addr]
+  toJSON (ConditionInput cond) = object ["fulfillment" .= B58Condition cond]
+  toJSON (PubKeyHashInput addr) = object ["address" .= Haskoin.PubKeyAddress addr]
+  toJSON (ScriptHashInput addr) = object ["address" .= Haskoin.ScriptAddress addr]
   toJSON (PubKeyInput pk) = object ["pubkey" .= pk]
   toJSON (ScriptInput script) = toJSON $ decodeUtf8 $ Haskoin.encodeHex script
 
@@ -112,15 +118,23 @@ instance FromJSON TxOutput where
 data OutputScript = CCOutput Condition
                   | AddressOutput Haskoin.Address
                   | PubKeyOutput Haskoin.PubKey
+                  | ScriptOutput ByteString
   deriving (Eq, Show)
 
 
 instance FromJSON OutputScript where
-  parseJSON = withStrictObject "OutputScript" $ join . switch
+  parseJSON (String s) =
+    case Haskoin.decodeHex (encodeUtf8 s) of
+         Just bs -> pure $ ScriptOutput bs
+         Nothing -> fail "Invalid hex script"
+  parseJSON val = switch val
     where
+      switch = withStrictObject "OutputScript" $ \o -> do
       -- the switch is so that we get the correct parse error
-      switch o = getCC <$> o .:- "condition"
-                <|> getAddr <$> o .:- "address"
+        act <- (getCC <$> o .:- "condition")
+           <|> (getAddr <$> o .:- "address")
+           <|> fail "outputscript must contain condition or address"
+        act
       getCC val = do
         B58Condition cond <- parseJSON val
         pure $ CCOutput cond
@@ -131,3 +145,4 @@ instance ToJSON OutputScript where
   toJSON (CCOutput cond) = object ["condition" .= B58Condition cond]
   toJSON (AddressOutput addr) = object ["address" .= addr]
   toJSON (PubKeyOutput pk) = object ["pubkey" .= pk]
+  toJSON (ScriptOutput script) = toJSON $ decodeUtf8 $ Haskoin.encodeHex script

@@ -30,11 +30,13 @@ dependencies:
 - cryptoconditions
 - cryptonite
 - haskoin-core
+- http-conduit
 - memory
 - microlens
 - microlens-platform
 - microlens-aeson
 - optparse-applicative
+- process
 - text
 - transformers
 - unordered-containers
@@ -66,4 +68,3 @@ tests:
     - tasty
     - tasty-hunit
     - QuickCheck
-

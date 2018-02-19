@@ -26,7 +26,7 @@ encodeTx = pureMethod $ \obj -> do
   ktx <- obj .: "tx"
   pure $ do
     tx <- TX.encodeTx ktx
-    pure $ object ["tx" .= tx, "txid" .= txHash tx]
+    pure $ object ["hex" .= tx, "txid" .= txHash tx]
 
 
 decodeTx :: JsonMethod
@@ -42,7 +42,7 @@ signTxEd25519 = pureMethod $ \obj -> do
   ktx <- obj .: "tx"
   keys <- obj .: "privateKeys" >>= mapM parseSecretKey
   pure $ do
-    signed <- TX.signTxEd25519 ktx keys
+    signed <- TX.signTxEd25519 keys ktx
     pure $ object ["tx" .= signed]
 
 
@@ -51,7 +51,7 @@ signTxBitcoin = pureMethod $ \obj -> do
   ktx <- obj .: "tx"
   keys <- obj .: "privateKeys" >>= mapM parseBitcoinWif
   pure $ do
-    signed <- TX.signTxBitcoin ktx keys
+    signed <- TX.signTxBitcoin keys ktx
     pure $ object ["tx" .= signed]
   where
     parseBitcoinWif txt =

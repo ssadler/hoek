@@ -5,6 +5,7 @@ module Network.Komodo.Prelude
 
 import Control.Applicative as ALL
 import Control.Monad as ALL (join, when)
+import Control.Monad.IO.Class as ALL (liftIO)
 import Control.Monad.Trans.Except as ALL
 import Control.Monad.Trans.Class as ALL
 
@@ -18,7 +19,6 @@ import Data.Text as ALL (Text, unpack)
 import Data.Text.Encoding as ALL (encodeUtf8, decodeUtf8)
 
 import Network.Komodo.Errors as ALL
---import Network.Komodo.Data.Utils as ALL
 
 
 -- Calls fail on exception

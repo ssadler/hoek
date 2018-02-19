@@ -14,6 +14,7 @@ import qualified Network.Komodo.API as API
 import           Network.Komodo.Prelude
 
 import           System.Exit
+import           System.IO
 
 
 type Method = ExceptT Err IO Value
@@ -45,7 +46,7 @@ main = do
   (pretty, act) <- execParser parseOpts
   res <- runExceptT act
   case res of
-       Left err -> print err >> exitFailure
+       Left err -> hPutStrLn stderr (show err) >> exitFailure
        Right val -> do
           let enc = if pretty then encodePretty' pconf else encode
           C8L.putStrLn $ enc val

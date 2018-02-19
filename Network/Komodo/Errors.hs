@@ -2,7 +2,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 module Network.Komodo.Errors
-  ( Err
+  ( Err(..)
   , ErrClass(..)
   , allErrorClasses
   , errMsg
@@ -31,6 +31,8 @@ data ErrClass =
   | InvalidProtocol
   | InvalidParams
   | OtherError
+  | RPCMethodError
+  | RPCTransportError
 
   -- Old?
   | TxInvalidFulfillment
