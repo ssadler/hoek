@@ -2,6 +2,3 @@
 	path = ext/haskoin
 	url = https://github.com/libscott/haskoin/
 	branch = hoek
-[submodule "ext/cryptoconditions-hs"]
-	path = ext/cryptoconditions-hs
-	url = https://github.com/libscott/cryptoconditions-hs

@@ -7,7 +7,7 @@ module TestStandard
 import Test.Tasty
 import Test.Tasty.HUnit
 
-import Network.CryptoConditions
+import Network.Komodo.CryptoConditions
 
 import TestSupport
 

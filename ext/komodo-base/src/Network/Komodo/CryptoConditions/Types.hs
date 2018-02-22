@@ -19,7 +19,6 @@ import qualified Network.CryptoConditions.Impl as IE
 import           Network.Komodo.Crypto
 import           Network.Komodo.Crypto.B58Keys
 import           Network.Komodo.Data.Aeson
-import           Network.Komodo.Prelude
 
 
 newtype B58Condition = B58Condition Condition

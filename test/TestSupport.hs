@@ -5,7 +5,7 @@ module TestSupport where
 import Crypto.Error
 import Crypto.PubKey.Ed25519
 
-import Network.CryptoConditions
+import Network.Komodo.CryptoConditions
 import Network.Komodo.Transaction
 
 import Data.ByteString

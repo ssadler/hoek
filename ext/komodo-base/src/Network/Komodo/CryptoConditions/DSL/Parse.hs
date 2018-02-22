@@ -5,19 +5,23 @@ module Network.Komodo.CryptoConditions.DSL.Parse
   ) where
 
 
-import Data.Attoparsec.Text
-import qualified Data.Text as T
+import           Control.Applicative
+import           Control.Monad.Trans.Except
 
-import Network.Komodo.Crypto
-import Network.Komodo.Crypto.B58Keys
-import Network.Komodo.CryptoConditions.Types
-import Network.Komodo.Prelude
+import           Data.Attoparsec.Text
+import           Data.Functor.Identity
+import qualified Data.Text as T
+import           Data.Monoid
+
+import           Network.Komodo.Crypto
+import           Network.Komodo.Crypto.B58Keys
+import           Network.Komodo.CryptoConditions.Types
 
 
 type CryptoCondition = Condition
 
 
-parseDSL :: T.Text -> Except Err CryptoCondition
+parseDSL :: T.Text -> Except String CryptoCondition
 parseDSL t = complete $ parse dslParser t
   where
     complete (Done _ r) = return r
@@ -25,7 +29,7 @@ parseDSL t = complete $ parse dslParser t
     complete (Fail rest _ msg) =
       let offset = T.length t - T.length rest
           mmsg = msg <> " at char " <> show offset
-       in throwE $ errMsg TxConditionParseError $ T.pack mmsg
+       in throwE mmsg
 
 
 dslParser :: Parser CryptoCondition
@@ -54,6 +58,10 @@ dslParser = cond <* (endOfInput <|> fail "Expected end")
          then do (PK k) <- exceptToFail (parseKey t)
                  pure $ pure $ Ed25519 k Nothing
          else fail "Not a public key"
+
+
+exceptToFail :: Monad m => Except String a -> m a
+exceptToFail = either fail pure . runIdentity . runExceptT
 
 
 isBase58 :: Char -> Bool

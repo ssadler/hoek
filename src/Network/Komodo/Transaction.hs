@@ -16,8 +16,8 @@ import           Data.Serialize                (encode)
 import           Crypto.PubKey.Ed25519 as Ed2
 import           Crypto.Error
 
-import           Network.CryptoConditions
 import           Network.Komodo.Crypto
+import           Network.Komodo.CryptoConditions
 import           Network.Komodo.Prelude
 import           Network.Komodo.Transaction.Types as Types
 import qualified Network.Haskoin.Crypto as Haskoin

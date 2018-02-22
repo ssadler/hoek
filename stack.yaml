@@ -20,7 +20,7 @@ resolver: lts-10.1
 # will not be run. This is useful for tweaking upstream packages.
 packages:
 - .
-- ./ext/cryptoconditions-hs
+- ./ext/komodo-base
 - ./ext/haskoin/haskoin-core
 
 # Dependency packages to be pulled from upstream that are not in the resolver
@@ -31,6 +31,7 @@ extra-deps:
 - secp256k1-0.5.2
 - base58-bytestring-0.1.0
 - aeson-quick-0.1.2.0
+- cryptoconditions-0.2.2.1
 
 
 # Override default flag values for local packages and extra-deps

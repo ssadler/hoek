@@ -27,7 +27,7 @@ dependencies:
 - bytestring
 - cereal
 - containers
-- cryptoconditions
+- komodo-base
 - cryptonite
 - haskoin-core
 - http-conduit
@@ -42,7 +42,7 @@ dependencies:
 - unordered-containers
 
 library:
-  source-dirs: .
+  source-dirs:           src
 
 executables:
   hoek:

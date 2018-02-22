@@ -5,17 +5,19 @@ module Network.Komodo.CryptoConditions.DSL.Serialize
   , deserializeDSL
   ) where
 
-import Control.Monad.Trans.State
+import           Control.Applicative
+import           Control.Monad.Trans.Except
+import           Control.Monad.Trans.State
 
 import qualified Data.Attoparsec.Text as AT
+import           Data.Monoid
 import qualified Data.Text as T
 import qualified Data.List as List
 
-import Network.Komodo.Crypto
-import Network.Komodo.Crypto.B58Keys
-import Network.Komodo.CryptoConditions.DSL.Parse
-import Network.Komodo.CryptoConditions.Types
-import Network.Komodo.Prelude
+import           Network.Komodo.Crypto
+import           Network.Komodo.Crypto.B58Keys
+import           Network.Komodo.CryptoConditions.DSL.Parse
+import           Network.Komodo.CryptoConditions.Types
 
 
 type CryptoCondition = Condition
@@ -45,10 +47,10 @@ localName pk locals =
 --------------------------------------------------------------------------------
 -- Deserialize DSL - splices variables back into expression
 --
-deserializeDSL :: T.Text -> [T.Text] -> Except Err CryptoCondition
+deserializeDSL :: T.Text -> [T.Text] -> Except String CryptoCondition
 deserializeDSL expr locals = do
   let parse = AT.parseOnly (spliceVars locals) expr 
-  spliced <- withExcept (errStr TxConditionParseError) (ExceptT $ return parse)
+  spliced <- ExceptT $ return parse
   parseDSL spliced
 
 

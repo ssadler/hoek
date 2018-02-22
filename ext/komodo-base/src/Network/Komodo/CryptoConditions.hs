@@ -8,18 +8,19 @@ module Network.Komodo.CryptoConditions
   , parsePolyFulfillment
   ) where
 
+import           Control.Monad.Trans.Except
 
 import           Crypto.Error
 import qualified Crypto.PubKey.Ed25519 as Ed2
 
 import           Data.Aeson.Types
+import           Data.ByteString (ByteString)
 import           Data.Text.Encoding (encodeUtf8)
 
 import           Network.Komodo.Crypto
 import           Network.Komodo.Crypto.B58Keys
 import           Network.Komodo.CryptoConditions.DSL as DSL
 import           Network.Komodo.CryptoConditions.Types as Types
-import           Network.Komodo.Prelude
 
 
 
@@ -43,7 +44,5 @@ conditionIsSigned (Ed25519 _ (Just _)) = True
 conditionIsSigned _ = False
 
 
-readStandardFulfillmentBase64 :: ByteString -> Except Err Condition
-readStandardFulfillmentBase64 = either throw pure . readFulfillmentBase64
-  where throw = throwE . errStr TxInvalidFulfillment
-
+readStandardFulfillmentBase64 :: ByteString -> Except String Condition
+readStandardFulfillmentBase64 = ExceptT . pure . readFulfillmentBase64

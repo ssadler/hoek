@@ -1,0 +1,7 @@
+flags: {}
+packages:
+- .
+extra-deps:
+- base58-bytestring-0.1.0
+- cryptoconditions-0.2.2.1
+resolver: lts-10.6
