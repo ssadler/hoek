@@ -82,7 +82,7 @@ instance FromJSON InputScript where
            <|> (getPubKey <$> o .:- "pubkey")
            <|> fail "inputscript must contain fulfillment, address or pubkey"
         act
-      getCC val = do B58Condition cond <- parseJSON val; pure (ConditionInput cond)
+      getCC val = ConditionInput <$> parseJSON val
       getAddress val = do 
           addr <- parseJSON val
           pure $ case addr of
@@ -92,7 +92,7 @@ instance FromJSON InputScript where
 
 
 instance ToJSON InputScript where
-  toJSON (ConditionInput cond) = object ["fulfillment" .= B58Condition cond]
+  toJSON (ConditionInput cond) = object ["fulfillment" .= cond]
   toJSON (PubKeyHashInput addr) = object ["address" .= Haskoin.PubKeyAddress addr]
   toJSON (ScriptHashInput addr) = object ["address" .= Haskoin.ScriptAddress addr]
   toJSON (PubKeyInput pk) = object ["pubkey" .= pk]
@@ -135,14 +135,12 @@ instance FromJSON OutputScript where
            <|> (getAddr <$> o .:- "address")
            <|> fail "outputscript must contain condition or address"
         act
-      getCC val = do
-        B58Condition cond <- parseJSON val
-        pure $ CCOutput cond
+      getCC val = CCOutput <$> parseJSON val
       getAddr val = AddressOutput <$> parseJSON val
 
 
 instance ToJSON OutputScript where
-  toJSON (CCOutput cond) = object ["condition" .= B58Condition cond]
+  toJSON (CCOutput cond) = object ["condition" .= cond]
   toJSON (AddressOutput addr) = object ["address" .= addr]
   toJSON (PubKeyOutput pk) = object ["pubkey" .= pk]
   toJSON (ScriptOutput script) = toJSON $ decodeUtf8 $ Haskoin.encodeHex script
