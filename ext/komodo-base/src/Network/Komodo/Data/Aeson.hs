@@ -19,8 +19,6 @@ import Data.Text
 
 import System.IO.Unsafe
 
-import Network.Komodo.Data.Utils
-
 
 data StrictObject = StrictObject Object (IORef (Set.Set Text))
 
@@ -57,3 +55,4 @@ withStrictObject label act = withObject label $ \obj -> do
     -- Slightly dodgy function here. It's neccesary to manually add edges
     -- to sequence pure and impure computations in this case.
     unsafeDepend a = unsafePerformIO . seq a
+    setToString = unpack . intercalate "," . Set.toList

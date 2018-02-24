@@ -7,8 +7,10 @@ module Network.Komodo.CryptoConditions.Types (
   ) where
 
 import qualified Crypto.PubKey.Ed25519 as Ed2
+import qualified Crypto.Secp256k1 as EC
 
 import           Data.Aeson
+import           Data.Serialize
 import qualified Data.Set as Set
 import           Data.Word
 
@@ -18,15 +20,17 @@ import           Network.CryptoConditions.Json
 
 import           Network.Komodo.Crypto
 import           Network.Komodo.Crypto.B58Keys
+import           Network.Komodo.Crypto.B16Keys
 import           Network.Komodo.CryptoConditions.Aux
+import           Network.Komodo.CryptoConditions.Secp256k1
 import           Network.Komodo.Data.Aeson
 
 
 data Condition =
     Preimage Preimage
-  | Prefix Prefix Int Condition
   | Threshold Word16 [Condition]
   | Ed25519 Ed2.PublicKey (Maybe Ed2.Signature)
+  | Secp256k1 EC.PubKey (Maybe EC.Sig)
   | Aux Method ConditionAux (Maybe FulfillmentAux)
   | Anon Int Fingerprint Int (Set.Set ConditionType)
   deriving (Show, Eq)
@@ -34,52 +38,51 @@ data Condition =
 
 instance IsCondition Condition where
   getType (Anon 0 _ _ _) = preimageType
-  getType (Anon 1 _ _ _) = prefixType
   getType (Anon 2 _ _ _) = thresholdType
   getType (Anon 4 _ _ _) = ed25519Type
+  getType (Anon 5 _ _ _) = secp256k1Type
   getType (Anon 15 _ _ _) = auxType
   getType (Threshold _ _) = thresholdType
   getType (Ed25519 _ _) = ed25519Type
   getType (Preimage _) = preimageType
-  getType (Prefix _ _ _) = prefixType
+  getType (Secp256k1 _ _) = secp256k1Type
   getType (Aux _ _ _) = auxType
 
   getCost (Threshold t subs) = thresholdCost t subs
   getCost (Ed25519 _ _) = ed25519Cost
   getCost (Preimage pre) = preimageCost pre
-  getCost (Prefix pre mml c) = prefixCost pre mml c
   getCost (Aux _ _ _) = auxCost
+  getCost (Secp256k1 _ _) = secp256k1Cost
   getCost (Anon _ _ c _) = c
 
   getFingerprint (Threshold t subs) = thresholdFingerprint t subs
   getFingerprint (Ed25519 pk _) = ed25519Fingerprint pk
   getFingerprint (Preimage pre) = preimageFingerprint pre
-  getFingerprint (Prefix pre mml c) = prefixFingerprint pre mml c
   getFingerprint (Aux m ca _) = auxFingerprint m ca
+  getFingerprint (Secp256k1 pk _) = secp256k1Fingerprint pk
   getFingerprint (Anon _ fp _ _) = fp
 
   getFulfillment (Threshold t subs) = thresholdFulfillment t subs
   getFulfillment (Ed25519 pk msig) = ed25519Fulfillment pk msig
   getFulfillment (Preimage pre) = Just $ preimageFulfillment pre
-  getFulfillment (Prefix pre mml c) =  prefixFulfillment pre mml c
   getFulfillment (Aux m ca fa) =  auxFulfillment m ca fa
+  getFulfillment (Secp256k1 pk msig) = secp256k1Fulfillment pk <$> msig
   getFulfillment (Anon _ _ _ _) = Nothing
 
   getSubtypes (Threshold _ sts) = thresholdSubtypes sts
   getSubtypes (Anon _ _ _ sts)  = sts
-  getSubtypes (Prefix _ _ c)    = prefixSubtypes c
   getSubtypes _                 = mempty
 
   parseFulfillment 0 = parsePreimage Preimage
-  parseFulfillment 1 = parsePrefix Prefix
   parseFulfillment 2 = parseThreshold Threshold
   parseFulfillment 4 = parseEd25519 Ed25519
+  parseFulfillment 5 = parseSecp256k1 Secp256k1
   parseFulfillment 15 = parseAux Aux
 
   verifyMessage (Preimage image) = verifyPreimage image
-  verifyMessage (Prefix pre mml cond) = verifyPrefix pre mml cond
   verifyMessage (Threshold m subs) = verifyThreshold m subs
   verifyMessage (Ed25519 pk (Just sig)) = verifyEd25519 pk sig
+  verifyMessage (Secp256k1 pk (Just sig)) = verifySecp256k1 pk sig
   verifyMessage (Aux m ca fa) = verifyAux m ca fa
   verifyMessage _ = const False
 
@@ -108,6 +111,12 @@ instance ToJSON Condition where
                 , "method" .= m
                 , "conditionAux" .= toB64 ca
                 ] ++ fa
+  toJSON (Secp256k1 pk msig) =
+    let encodeSig = toB64 . Data.Serialize.encode . EC.exportCompactSig
+        sig = maybe [] (\s -> ["signature" .= encodeSig s]) msig
+    in object $ [ "type" .= (String "secp256k1-sha-256")
+                , "publicKey" .= toB16 (EC.exportPubKey True pk)
+                ] ++ sig
   toJSON cond@(Anon _ _ _ _) =
     object [ "type" .= ("condition" :: String)
            , "uri" .= getConditionURI cond
@@ -130,4 +139,8 @@ instance FromJSON Condition where
               let condAux = obj .:- "conditionAux" >>= fromB64
                   ffillAux = obj .:-? "fulfillmentAux" >>= mapM fromB64
               Aux <$> obj .:- "method" <*> condAux <*> ffillAux
+         "secp256k1-sha-256" -> do
+              pkData <- obj .:- "publicKey" >>= parseB16
+              sigData <- obj .:-? "signature" >>= mapM fromB64
+              makeSecp256k1 Secp256k1 pkData sigData
          _ -> fail ("Unsupported condition type: " ++ condType)

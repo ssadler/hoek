@@ -3,5 +3,6 @@ packages:
 - .
 extra-deps:
 - base58-bytestring-0.1.0
-- cryptoconditions-0.2.2.1
+- cryptoconditions-0.2.2.2
+- secp256k1-0.5.2
 resolver: lts-10.6

@@ -46,6 +46,15 @@ signTxEd25519 = pureMethod $ \obj -> do
     pure $ object ["tx" .= signed]
 
 
+signTxSecp256k1 :: JsonMethod
+signTxSecp256k1 = pureMethod $ \obj -> do
+  ktx <- obj .: "tx"
+  keys <- obj .: "privateKeys" >>= mapM parseBitcoinWif
+  pure $ do
+    signed <- TX.signTxSecp256k1 keys ktx
+    pure $ object ["tx" .= signed]
+
+
 signTxBitcoin :: JsonMethod
 signTxBitcoin = pureMethod $ \obj -> do
   ktx <- obj .: "tx"
@@ -53,10 +62,12 @@ signTxBitcoin = pureMethod $ \obj -> do
   pure $ do
     signed <- TX.signTxBitcoin keys ktx
     pure $ object ["tx" .= signed]
-  where
-    parseBitcoinWif txt =
-      let mkey = Haskoin.fromWif $ encodeUtf8 txt
-       in maybe (fail "invalid (non-WIF) private key") pure mkey
+
+
+parseBitcoinWif :: Text -> Parser Haskoin.PrvKey
+parseBitcoinWif txt =
+  let mkey = Haskoin.fromWif $ encodeUtf8 txt
+   in maybe (fail "invalid (non-WIF) private key") pure mkey
 
 
 decodeScript :: JsonMethod

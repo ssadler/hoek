@@ -5,6 +5,7 @@ module Network.Komodo.Transaction
   , encodeTx
   , decodeTx
   , signTxEd25519
+  , signTxSecp256k1
   , signTxBitcoin
   ) where
 
@@ -13,8 +14,9 @@ import           Data.Word
 import qualified Data.ByteString               as BS
 import           Data.Serialize                (encode)
 
-import           Crypto.PubKey.Ed25519 as Ed2
 import           Crypto.Error
+import qualified Crypto.PubKey.Ed25519 as Ed2
+import qualified Crypto.Secp256k1 as EC
 
 import           Network.Komodo.Crypto
 import           Network.Komodo.CryptoConditions
@@ -42,7 +44,7 @@ toHaskoinInput (TxInput outpoint (ConditionInput cond)) =
        Just ffillBin ->
          let script = Script [opPushData ffillBin]
           in pure $ Haskoin.TxIn outpoint (encode script) 0
-       Nothing -> throwE $ errStr TxInvalidFulfillment "Unfulfillable condition"
+       Nothing -> throwE $ otherErr "Can't encode unfulled condition"
 toHaskoinInput (TxInput _ inp) =
   throwE $ otherErr $ "Can't encode unsigned input: " ++ show inp
 
@@ -87,22 +89,41 @@ convertScriptOutput so = throwE $ otherErr $ "Cannot decode output: " ++ show so
 
 -- | Signing | ---------------------------------------------------------------
 
-signTxEd25519 :: [SecretKey] -> KTx -> Except Err KTx
+signTxEd25519 :: [Ed2.SecretKey] -> KTx -> Except Err KTx
 signTxEd25519 keys ktx@(KTx ins outs) = 
   let tx = encodeTxEmptyInputs ktx
       signedIns = signInputEd25519 tx keys <$> zip [0..] ins
    in pure $ KTx signedIns outs
 
 
-signInputEd25519 :: Haskoin.Tx -> [SecretKey] -> (Int, TxInput) -> TxInput
+signInputEd25519 :: Haskoin.Tx -> [Ed2.SecretKey] -> (Int, TxInput) -> TxInput
 signInputEd25519 tx keys (i, inp@(TxInput op (ConditionInput cond))) =
   let ms@(Just sigInput) = getSigInput inp
       message = getMessageToSign tx i sigInput
-      sign c sk = fulfillEd25519 (toPublic sk) sk message c
+      sign c sk = fulfillEd25519 (Ed2.toPublic sk) sk message c
       cond' = foldl sign cond keys
       newInput = TxInput op (ConditionInput cond')
    in maybe inp (\_ -> newInput) ms
 signInputEd25519 _ _ (_, inp) = inp
+
+
+signTxSecp256k1 :: [Haskoin.PrvKey] -> KTx -> Except Err KTx
+signTxSecp256k1 keys ktx@(KTx ins outs) =
+  let tx = encodeTxEmptyInputs ktx
+      ecKeys = Haskoin.prvKeySecKey <$> keys
+      signedIns = signInputSecp256k1 tx ecKeys <$> zip [0..] ins
+   in pure $ KTx signedIns outs
+
+
+signInputSecp256k1 :: Haskoin.Tx -> [EC.SecKey] -> (Int, TxInput) -> TxInput
+signInputSecp256k1 tx keys (i, inp@(TxInput op (ConditionInput cond))) =
+  let ms@(Just sigInput) = getSigInput inp
+      Just message = EC.msg $ getMessageToSign tx i sigInput
+      sign c sk = fulfillSecp256k1 (EC.derivePubKey sk) sk message c
+      cond' = foldl sign cond keys
+      newInput = TxInput op (ConditionInput cond')
+   in maybe inp (\_ -> newInput) ms
+signInputSecp256k1 _ _ (_, inp) = inp
 
 
 getMessageToSign :: Haskoin.Tx -> Int -> Haskoin.SigInput -> ByteString

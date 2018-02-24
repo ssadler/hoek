@@ -7,12 +7,14 @@ module Network.Komodo.CryptoConditions
   , getConditionPubkeys
   , parsePolyFulfillment
   , fulfillEd25519
+  , fulfillSecp256k1
   ) where
 
 import           Control.Monad.Trans.Except
 
 import           Crypto.Error
 import qualified Crypto.PubKey.Ed25519 as Ed2
+import qualified Crypto.Secp256k1 as EC
 
 import           Data.Aeson.Types
 import           Data.ByteString (ByteString)
@@ -60,9 +62,16 @@ fulfillEd25519 pk sk msg c@(Ed25519 pk' _) =
   if pk == pk' then Ed25519 pk (Just $ Ed2.sign sk pk msg) else c
 fulfillEd25519 pk sk msg (Threshold t subs) =
   Threshold t $ fulfillEd25519 pk sk msg <$> subs
-fulfillEd25519 pk sk msg (Prefix pre mml sub) =
-  Prefix pre mml $ fulfillEd25519 pk sk (pre <> msg) sub
 fulfillEd25519 _ _ _ c = c
+
+
+fulfillSecp256k1 :: EC.PubKey -> EC.SecKey -> EC.Msg -> Condition -> Condition
+fulfillSecp256k1 pk sk msg c@(Secp256k1 pk' _)
+  | pk == pk' = Secp256k1 pk $ Just $ EC.signMsg sk msg
+  | otherwise = c
+fulfillSecp256k1 pk sk msg (Threshold t subs) =
+  Threshold t $ fulfillSecp256k1 pk sk msg <$> subs
+fulfillSecp256k1 _ _ _ c = c
 
 
 readStandardFulfillmentBase64 :: ByteString -> Except String Condition

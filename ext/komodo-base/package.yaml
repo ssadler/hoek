@@ -26,12 +26,15 @@ dependencies:
 - asn1-encoding
 - asn1-types
 - attoparsec
+- base16-bytestring
 - base58-bytestring
 - bytestring
+- cereal
 - containers
 - cryptonite
 - cryptoconditions
 - memory
+- secp256k1
 - text
 - transformers
 - unordered-containers

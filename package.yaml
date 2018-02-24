@@ -37,6 +37,7 @@ dependencies:
 - microlens-aeson
 - optparse-applicative
 - process
+- secp256k1
 - text
 - transformers
 - unordered-containers
