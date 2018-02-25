@@ -39,12 +39,11 @@ encodeTx (KTx ins outs) = do
 toHaskoinInput :: TxInput -> Except Err Haskoin.TxIn
 toHaskoinInput (TxInput op (ScriptInput s)) = pure $ Haskoin.TxIn op s 0
 toHaskoinInput (TxInput outpoint (ConditionInput cond)) =
-  -- TODO: Check fulfilled
-  case getFulfillment cond of
+  case encodeFulfillment cond of
        Just ffillBin ->
          let script = Script [opPushData ffillBin]
           in pure $ Haskoin.TxIn outpoint (encode script) 0
-       Nothing -> throwE $ otherErr "Can't encode unfulled condition"
+       Nothing -> throwE $ otherErr "Can't encode unfulfilled condition"
 toHaskoinInput (TxInput _ inp) =
   throwE $ otherErr $ "Can't encode unsigned input: " ++ show inp
 

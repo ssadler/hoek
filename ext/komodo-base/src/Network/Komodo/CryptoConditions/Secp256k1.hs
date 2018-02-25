@@ -37,18 +37,14 @@ secp256k1Cost = 131072
 
 secp256k1Fingerprint :: PubKey -> Fingerprint
 secp256k1Fingerprint pk =
-  sha256 $ encodeASN1' DER
-        [ Start Sequence
-        , Other Context 0 $ exportPubKey True pk
-        ]
+  hashASN $ asnSequence Sequence $ asnData [exportPubKey True pk]
 
 
--- TODO: Do we really need the bogus fulfillments?
-secp256k1Fulfillment :: PubKey -> Sig -> Fulfillment
-secp256k1Fulfillment pk sig = encodeASN1' DER $
+secp256k1FulfillmentASN :: PubKey -> Sig -> [ASN1]
+secp256k1FulfillmentASN pk sig =
   let pkData = exportPubKey True pk
       sigData = Data.Serialize.encode $ exportCompactSig sig
-   in fiveBellsContainer (typeId secp256k1Type) [pkData, sigData]
+   in asnChoice 5 $ asnData [pkData, sigData]
 
 
 parseSecp256k1 :: Construct c -> ParseASN1 c

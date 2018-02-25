@@ -2,12 +2,12 @@
 
 module Network.Komodo.Transaction.Types 
   ( KTx(..)
-  , Haskoin.OutPoint(..)
-  , TxInput(..)
   , InputScript(..)
-  , TxOutput(..)
-  , OutputScript(..)
+  , Haskoin.OutPoint(..)
   , Haskoin.TxHash(..)
+  , OutputScript(..)
+  , TxInput(..)
+  , TxOutput(..)
   ) where
 
 import           Control.Applicative

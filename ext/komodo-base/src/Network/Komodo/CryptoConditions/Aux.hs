@@ -39,19 +39,13 @@ auxCost = 131072
 
 
 auxFingerprint :: Method -> ConditionAux -> Fingerprint
-auxFingerprint method condAux = sha256 body
-  where body = encodeASN1' DER asn
-        asn = [ Start Sequence
-              , Other Context 0 $ encodeUtf8 method
-              , Other Context 1 condAux
-              ]
+auxFingerprint method condAux =
+  hashASN $ asnSequence Sequence $ asnData [encodeUtf8 method, condAux]
 
 
--- TODO: Do we really need the bogus fulfillments?
-auxFulfillment :: Method -> ConditionAux -> Maybe FulfillmentAux -> Maybe Fulfillment
-auxFulfillment method condAux mFfillAux = Just $ encodeASN1' DER body
-  where body = fiveBellsContainer (typeId auxType) [encodeUtf8 method, condAux, ffillAux]
-        ffillAux = maybe "" id mFfillAux
+auxFulfillmentASN :: Method -> ConditionAux -> FulfillmentAux -> [ASN1]
+auxFulfillmentASN method condAux ffillAux =
+  asnChoice 15 $ asnData [encodeUtf8 method, condAux, ffillAux]
 
 
 parseAux :: (Method -> ConditionAux -> Maybe FulfillmentAux -> c) -> ParseASN1 c

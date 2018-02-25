@@ -62,12 +62,12 @@ instance IsCondition Condition where
   getFingerprint (Secp256k1 pk _) = secp256k1Fingerprint pk
   getFingerprint (Anon _ fp _ _) = fp
 
-  getFulfillment (Threshold t subs) = thresholdFulfillment t subs
-  getFulfillment (Ed25519 pk msig) = ed25519Fulfillment pk msig
-  getFulfillment (Preimage pre) = Just $ preimageFulfillment pre
-  getFulfillment (Aux m ca fa) =  auxFulfillment m ca fa
-  getFulfillment (Secp256k1 pk msig) = secp256k1Fulfillment pk <$> msig
-  getFulfillment (Anon _ _ _ _) = Nothing
+  getFulfillmentASN (Threshold t subs) = thresholdFulfillmentASN t subs
+  getFulfillmentASN (Ed25519 pk msig) = ed25519FulfillmentASN pk <$> msig
+  getFulfillmentASN (Preimage pre) = Just $ preimageFulfillmentASN pre
+  getFulfillmentASN (Aux m ca mfa) =  auxFulfillmentASN m ca <$> mfa
+  getFulfillmentASN (Secp256k1 pk msig) = secp256k1FulfillmentASN pk <$> msig
+  getFulfillmentASN (Anon _ _ _ _) = Nothing
 
   getSubtypes (Threshold _ sts) = thresholdSubtypes sts
   getSubtypes (Anon _ _ _ sts)  = sts
@@ -75,7 +75,7 @@ instance IsCondition Condition where
 
   parseFulfillment 0 = parsePreimage Preimage
   parseFulfillment 2 = parseThreshold Threshold
-  parseFulfillment 4 = parseEd25519 Ed25519
+  parseFulfillment 4 = parseEd25519 (\a b -> Ed25519 a $ Just b)
   parseFulfillment 5 = parseSecp256k1 Secp256k1
   parseFulfillment 15 = parseAux Aux
 

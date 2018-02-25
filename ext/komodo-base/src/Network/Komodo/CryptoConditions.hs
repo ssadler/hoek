@@ -37,7 +37,7 @@ getConditionPubkeys _ = []
 parsePolyFulfillment :: Value -> Parser Condition
 parsePolyFulfillment val =
   case val of (Object _) -> parseJSON val
-              (String t) -> let econd = readFulfillmentBase64 (encodeUtf8 t)
+              (String t) -> let econd = decodeFulfillmentBase64 (encodeUtf8 t)
                             in either fail pure econd
               _          -> typeMismatch "object or string" val
 
@@ -72,7 +72,3 @@ fulfillSecp256k1 pk sk msg c@(Secp256k1 pk' _)
 fulfillSecp256k1 pk sk msg (Threshold t subs) =
   Threshold t $ fulfillSecp256k1 pk sk msg <$> subs
 fulfillSecp256k1 _ _ _ c = c
-
-
-readStandardFulfillmentBase64 :: ByteString -> Except String Condition
-readStandardFulfillmentBase64 = ExceptT . pure . readFulfillmentBase64

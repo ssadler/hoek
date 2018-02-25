@@ -31,7 +31,7 @@ extra-deps:
 - secp256k1-0.5.2
 - base58-bytestring-0.1.0
 - aeson-quick-0.1.2.0
-- cryptoconditions-0.2.2.2
+- cryptoconditions-0.2.3.0
 
 
 # Override default flag values for local packages and extra-deps
