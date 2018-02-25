@@ -16,14 +16,9 @@ import           Network.Komodo.Crypto
 import           Network.Komodo.Prelude
 import qualified Network.Komodo.Transaction as TX
 
-import           Lens.Micro
-
-import Debug.Trace
-
 
 encodeTx :: JsonMethod
-encodeTx = pureMethod $ \obj -> do
-  ktx <- obj .: "tx"
+encodeTx = pureMethod $ \ktx ->
   pure $ do
     tx <- TX.encodeTx ktx
     pure $ object ["hex" .= tx, "txid" .= txHash tx]
@@ -32,36 +27,28 @@ encodeTx = pureMethod $ \obj -> do
 decodeTx :: JsonMethod
 decodeTx = pureMethod $ \obj -> do
   tx <- obj .: "hex"
-  pure $ do
-    ktx <- TX.decodeTx tx
-    pure $ object ["tx" .= ktx]
+  pure $ toJSON <$> TX.decodeTx tx
 
 
 signTxEd25519 :: JsonMethod
 signTxEd25519 = pureMethod $ \obj -> do
   ktx <- obj .: "tx"
   keys <- obj .: "privateKeys" >>= mapM parseSecretKey
-  pure $ do
-    signed <- TX.signTxEd25519 keys ktx
-    pure $ object ["tx" .= signed]
+  pure $ toJSON <$> TX.signTxEd25519 keys ktx
 
 
 signTxSecp256k1 :: JsonMethod
 signTxSecp256k1 = pureMethod $ \obj -> do
   ktx <- obj .: "tx"
   keys <- obj .: "privateKeys" >>= mapM parseBitcoinWif
-  pure $ do
-    signed <- TX.signTxSecp256k1 keys ktx
-    pure $ object ["tx" .= signed]
+  pure $ toJSON <$> TX.signTxSecp256k1 keys ktx
 
 
 signTxBitcoin :: JsonMethod
 signTxBitcoin = pureMethod $ \obj -> do
   ktx <- obj .: "tx"
   keys <- obj .: "privateKeys" >>= mapM parseBitcoinWif
-  pure $ do
-    signed <- TX.signTxBitcoin keys ktx
-    pure $ object ["tx" .= signed]
+  pure $ toJSON <$> TX.signTxBitcoin keys ktx
 
 
 parseBitcoinWif :: Text -> Parser Haskoin.PrvKey
@@ -76,8 +63,6 @@ decodeScript = pureMethod $ \obj -> do
   scriptBs <- case decodeHex scriptHex of
                    Just bs -> pure bs
                    Nothing -> fail "Invalid hex"
-  (Haskoin.Script ops) <- case Data.Serialize.decode scriptBs of
-                            Left e -> fail e
-                            Right s -> pure s
+  (Haskoin.Script ops) <- either fail pure $ Data.Serialize.decode scriptBs
   pure $
-    pure $ object ["ops" .= show ops, "isPushOnly" .= all Haskoin.isPushOp ops]
+    pure $ object ["ops" .= (show <$> ops), "isPushOnly" .= all Haskoin.isPushOp ops]
