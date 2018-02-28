@@ -21,7 +21,7 @@ import           Network.CryptoConditions.Json
 import           Network.Komodo.Crypto
 import           Network.Komodo.Crypto.B58Keys
 import           Network.Komodo.Crypto.B16Keys
-import           Network.Komodo.CryptoConditions.Aux
+import           Network.Komodo.CryptoConditions.Eval
 import           Network.Komodo.CryptoConditions.Secp256k1
 import           Network.Komodo.Data.Aeson
 
@@ -31,7 +31,7 @@ data Condition =
   | Threshold Word16 [Condition]
   | Ed25519 Ed2.PublicKey (Maybe Ed2.Signature)
   | Secp256k1 EC.PubKey (Maybe EC.Sig)
-  | Aux Method ConditionAux (Maybe FulfillmentAux)
+  | Eval Method Params
   | Anon Int Fingerprint Int (Set.Set ConditionType)
   deriving (Show, Eq)
 
@@ -41,31 +41,31 @@ instance IsCondition Condition where
   getType (Anon 2 _ _ _) = thresholdType
   getType (Anon 4 _ _ _) = ed25519Type
   getType (Anon 5 _ _ _) = secp256k1Type
-  getType (Anon 15 _ _ _) = auxType
+  getType (Anon 15 _ _ _) = evalType
   getType (Threshold _ _) = thresholdType
   getType (Ed25519 _ _) = ed25519Type
   getType (Preimage _) = preimageType
   getType (Secp256k1 _ _) = secp256k1Type
-  getType (Aux _ _ _) = auxType
+  getType (Eval _ _) = evalType
 
   getCost (Threshold t subs) = thresholdCost t subs
   getCost (Ed25519 _ _) = ed25519Cost
   getCost (Preimage pre) = preimageCost pre
-  getCost (Aux _ _ _) = auxCost
+  getCost (Eval _ _) = evalCost
   getCost (Secp256k1 _ _) = secp256k1Cost
   getCost (Anon _ _ c _) = c
 
   getFingerprint (Threshold t subs) = thresholdFingerprint t subs
   getFingerprint (Ed25519 pk _) = ed25519Fingerprint pk
   getFingerprint (Preimage pre) = preimageFingerprint pre
-  getFingerprint (Aux m ca _) = auxFingerprint m ca
+  getFingerprint (Eval m pre) = evalFingerprint m pre
   getFingerprint (Secp256k1 pk _) = secp256k1Fingerprint pk
   getFingerprint (Anon _ fp _ _) = fp
 
   getFulfillmentASN (Threshold t subs) = thresholdFulfillmentASN t subs
   getFulfillmentASN (Ed25519 pk msig) = ed25519FulfillmentASN pk <$> msig
   getFulfillmentASN (Preimage pre) = Just $ preimageFulfillmentASN pre
-  getFulfillmentASN (Aux m ca mfa) =  auxFulfillmentASN m ca <$> mfa
+  getFulfillmentASN (Eval m pre) =  Just $ evalFulfillmentASN m pre
   getFulfillmentASN (Secp256k1 pk msig) = secp256k1FulfillmentASN pk <$> msig
   getFulfillmentASN (Anon _ _ _ _) = Nothing
 
@@ -77,13 +77,13 @@ instance IsCondition Condition where
   parseFulfillment 2 = parseThreshold Threshold
   parseFulfillment 4 = parseEd25519 (\a b -> Ed25519 a $ Just b)
   parseFulfillment 5 = parseSecp256k1 Secp256k1
-  parseFulfillment 15 = parseAux Aux
+  parseFulfillment 15 = parseEval Eval
 
   verifyMessage (Preimage image) = verifyPreimage image
   verifyMessage (Threshold m subs) = verifyThreshold m subs
   verifyMessage (Ed25519 pk (Just sig)) = verifyEd25519 pk sig
   verifyMessage (Secp256k1 pk (Just sig)) = verifySecp256k1 pk sig
-  verifyMessage (Aux m ca fa) = verifyAux m ca fa
+  verifyMessage (Eval m pre) = verifyEval m pre
   verifyMessage _ = const False
 
   anon t f c = Anon t f c . toConditionTypes
@@ -105,12 +105,11 @@ instance ToJSON Condition where
            , "threshold" .= n
            , "subfulfillments" .= (toJSON <$> subs)
            ]
-  toJSON (Aux m ca mfa) =
-    let fa = maybe [] (\bs -> ["fulfillmentAux" .= toB64 bs]) mfa
-    in object $ [ "type" .= String "aux-sha-256"
-                , "method" .= m
-                , "conditionAux" .= toB64 ca
-                ] ++ fa
+  toJSON (Eval m pre) =
+    object $ [ "type" .= String "eval-sha-256"
+             , "method" .= m
+             , "preimage" .= toB64 pre
+             ]
   toJSON (Secp256k1 pk msig) =
     let encodeSig = toB64 . Data.Serialize.encode . EC.exportCompactSig
         sig = maybe [] (\s -> ["signature" .= encodeSig s]) msig
@@ -135,10 +134,9 @@ instance FromJSON Condition where
                              Nothing -> Nothing
          "threshold-sha-256" ->
               Threshold <$> obj .:- "threshold" <*> obj .:- "subfulfillments"
-         "aux-sha-256" -> do
-              let condAux = obj .:- "conditionAux" >>= fromB64
-                  ffillAux = obj .:-? "fulfillmentAux" >>= mapM fromB64
-              Aux <$> obj .:- "method" <*> condAux <*> ffillAux
+         "eval-sha-256" -> do
+              let preimage = obj .:- "preimage" >>= fromB64
+              Eval <$> obj .:- "method" <*> preimage
          "secp256k1-sha-256" -> do
               pkData <- obj .:- "publicKey" >>= parseB16
               sigData <- obj .:-? "signature" >>= mapM fromB64
