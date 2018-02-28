@@ -6,9 +6,9 @@ To facilitate participation in off-chain smart contracts on the [Komodo Platform
 1. [Off chain contract security](#off-chain-contract-security)
 1. [Blockchain Poker](#blockchain-poker)
 1. [Transactions](#transactions)
-..1. [Stake](#transaction-stake)
-..1. [StartGame](#transaction-startgame)
-..1. [PlayerPayout](#transaction-playerpayout)
+    1. [Stake](#transaction-stake)
+    1. [StartGame](#transaction-startgame)
+    1. [PlayerPayout](#transaction-playerpayout)
 1. [Weaknesses](#weaknesses)
 
 ## Introduction
