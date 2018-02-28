@@ -72,3 +72,10 @@ In a 2 player scenario, any single actor may dispute the game and the network wi
 1. Player2 and Dealer notice that Player1 has posted evidence. If they wish, they can also post **GameState** transactions. The evidence is simply a game state, which is the output of the **PVM**, signed by all players.
 1. Any player may create a transaction **TriggerReview**, which starts a countdown of a number of blocks, after which the game states will be evaluated. Participants have until this timeout to post their game states.
 1. When **TriggerReview** is accepted into the app chain, the game states will be evaluated on-chain using a call to **PVM**. A notary will take the payout vector is taken from the longest valid gamestate, and use it to compile transaction **Payout**. This transaction will then be broadcast to the KMD chain.
+
+
+## Transactions
+
+If you havn't already, this might be a good time to refer to the [transaction basics](./basics.md) document.
+
+
