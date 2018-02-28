@@ -6,6 +6,10 @@ To facilitate participation in off-chain smart contracts on the [Komodo Platform
 1. [Off chain contract security](#off-chain-contract-security)
 1. [Blockchain Poker](#blockchain-poker)
 1. [Transactions](#transactions)
+..1. [Stake](#transaction-stake)
+..1. [StartGame](#transaction-startgame)
+..1. [PlayerPayout](#transaction-playerpayout)
+1. [Weaknesses](#weaknesses)
 
 ## Introduction
 
@@ -104,6 +108,37 @@ PLAYER2_INPUT='[an input from player 2]'
 PLAYER2_CHANGE='[change for player 2]'
 STAKE_AMOUNT=[stake amount minus fees]
 
+PAYOUT_SCRIPT='{
+    "condition": {
+        {
+            "type": "threshold-sha-256",
+            "threshold": 1,
+            "subfulfillments": [
+                {
+                    "type": "threshold-sha-256",
+                    "threshold": 2,
+                    "subfulfillments": [
+                        {
+                            "type": "secp256k1-sha-256",
+                            "publicKey": "'$DEALER'"
+                        },
+                        {
+                            "type": "threhsold-sha-256",
+                            "threshold": '$QUORUM',
+                            "subfulfillments": [
+                                {"type": "secp256k1-sha-256", "publicKey": "'$PLAYER1'"},
+                                {"type": "secp256k1-sha-256", "publicKey": "'$PLAYER2'"}
+                            ]
+                        }
+                    ]
+                },
+                {"type": "eval-sha-256", "method": "subsetNotarySigs"}
+            ]
+        }
+    }
+}'
+
+
 STAKE_TX='{
     "inputs": [
         '"$PLAYER1_INPUT"',
@@ -111,36 +146,8 @@ STAKE_TX='{
     ],
     "outputs": [
         {
-            "amount": $STAKE_AMOUNT,
-            "script": {
-                "condition": {
-                    {
-                        "type": "threshold-sha-256",
-                        "threshold": 1,
-                        "subfulfillments": [
-                            {
-                                "type": "threshold-sha-256",
-                                "threshold": 2,
-                                "subfulfillments": [
-                                    {
-                                        "type": "secp256k1-sha-256",
-                                        "publicKey": "'$DEALER'"
-                                    },
-                                    {
-                                        "type": "threhsold-sha-256",
-                                        "threshold": '$QUORUM',
-                                        "subfulfillments": [
-                                            {"type": "secp256k1-sha-256", "publicKey": "'$PLAYER1'"},
-                                            {"type": "secp256k1-sha-256", "publicKey": "'$PLAYER2'"}
-                                        ]
-                                    }
-                                ]
-                            },
-                            {"type": "eval-sha-256", "method": "subsetNotarySigs"}
-                        ]
-                    }
-                }
-            }
+            "amount": '$STAKE_AMOUNT',
+            "script": '$PAYOUT_SCRIPT'
         },
         '"$PLAYER1_CHANGE"',
         '"$PLAYER2_CHANGE"'
@@ -150,7 +157,7 @@ STAKE_TX='{
 
 ### Transaction: StartGame
 
-The **StartGame** transaction is made on the PANGEA chain, and contains the ID of the **Stake** transaction as a data output. The dealer is expected to hold the PANGEA units neccesary to make this transaction. The dealer also provides outputs that are sufficient for the players to post gamestates in the event of a dispute.
+The **StartGame** transaction is made on the PANGEA chain, and contains the ID of the **Stake** transaction as a data output. The dealer is expected to hold the PANGEA units neccesary to make this transaction. The dealer also provides outputs that are sufficient for the players to post gamestates in the event of a dispute. An exec output is provided that will trigger an on-chain evaluation a subsequent payout; it includes a delay of a number of blocks before it can be triggered.
 
 Note: Currently, this transaction may or may not be used; in the case that it is not used, it would be good to provide the dealer with a way to recollect the outputs, even though they maybe just amount to dust.
 
@@ -159,8 +166,8 @@ DEALER_INPUT='[an input from dealer]'
 DEALER_CHANGE='[change for dealer]'
 STAKE_TXID="[txid of STAKE_TX]"
 
-DATAFEE=[a fee amount suficient to post a data output]
-EXECFEE=[a fee amount suficient to post an eval]
+DATAFEE=[a fee suficient to post a data output]
+EXECFEE=[a fee suficient to post an eval]
 
 STARTGAME_TX='{
     "inputs": ['$DEALER_INPUT'],
@@ -175,16 +182,51 @@ STARTGAME_TX='{
             "amount": $EXECFEE,
             "script": {
                 "type": "threshold-sha-256",
-                "threshold": 1,
+                "threshold": 2,
                 "subfulfillments": [
-                    {"type": "secp256k1-sha-256", "publicKey": "'$DEALER'"},
-                    {"type": "secp256k1-sha-256", "publicKey": "'$PLAYER1'"},
-                    {"type": "secp256k1-sha-256", "publicKey": "'$PLAYER2'"}
+                    {"type": "nLockTime", "blocks": $EVAL_DELAY_BLOCKS},
+                    {
+                        "type": "threshold-sha-256",
+                        "threshold": 1,
+                        "subfulfillments": [
+                            {"type": "secp256k1-sha-256", "publicKey": "'$DEALER'"},
+                            {"type": "secp256k1-sha-256", "publicKey": "'$PLAYER1'"},
+                            {"type": "secp256k1-sha-256", "publicKey": "'$PLAYER2'"}
+                        ]
+                    }
                 ]
             }
-        }
+        },
+        {"script": {"return": "'$STAKE_TXID'"}, "amount": $DATAFEE},
     ]
 }'
 ```
 
 ### Transaction: PlayerPayout
+
+The **PlayerPayout** transaction is made on the KMD chain. It is independent of the **StartGame** transaction. It distributes the stake according to a payout vector that is agreed upon by a majority of the players + the dealer.
+
+```bash
+PLAYERPAYOUT_TX='{
+    "inputs": [{
+        "txid": "'$STAKE_TXID'",
+        "idx": 0,
+        "script": '$PAYOUT_SCRIPT'
+    }],
+    "outputs": [
+        {"script": {"condition": {"type": "secp256k1-sha-256", "publicKey": "'$DEALER'"}},
+         "amount": $DEALER_PAYOUT},
+        {"script": {"condition": {"type": "secp256k1-sha-256", "publicKey": "'$PLAYER1'"}},
+         "amount": $PLAYER1_PAYOUT},
+        {"script": {"condition": {"type": "secp256k1-sha-256", "publicKey": "'$PLAYER2'"}},
+         "amount": $PLAYER2_PAYOUT}
+    ]
+}'
+```
+
+
+### Questions
+
+* What happens if the players broadcast Stake but the dealer never broadcasts StartGame?
+* How does the notary know that the dispute pertains to the correct transaction on KMD? Put another way,
+  what's to stop a group from trying to steal another group's Stake?
