@@ -89,7 +89,7 @@ PLAYER1="03c8a965089173d746144cd667c8cedf985460ecc155811bd729e461f0079222f7"
 PLAYER1_SK="Up3VgThhFXFXG7QN5ykym2hkiBrfB76GNhehyUXNG7AJMdLoVPU7"
 PLAYER2="03d6de78061ca1695ba068d15ecf4a5431de9dccce7b45a73bb996e7e596acdba7"
 PLAYER2_SK="UpyycopsYkknBsPd5Y2BLzKrTYVnhKoFL59H49JWn6TqXmJKxER4"
-DEALER="025af7eed280ca8d1ebb294e9388378a2abf5455072c17bdf22506b6aa18dc8a24
+DEALER="025af7eed280ca8d1ebb294e9388378a2abf5455072c17bdf22506b6aa18dc8a24"
 DEALER_SK="UrsT8pXPH1WvfTkkRzP2JsLTB6ebqhH3n6p31UcXpgyoESB9wvPp"
 
 QUORUM=2  # 2/2+1 = 2
@@ -106,7 +106,7 @@ PLAYER1_INPUT='[an input from player 1]'
 PLAYER1_CHANGE='[change for player 1]'
 PLAYER2_INPUT='[an input from player 2]'
 PLAYER2_CHANGE='[change for player 2]'
-STAKE_AMOUNT=[stake amount minus fees]
+STAKE_AMOUNT='[stake amount minus fees]'
 
 PAYOUT_SCRIPT='{
     "condition": {
@@ -202,6 +202,28 @@ STARTGAME_TX='{
 }'
 ```
 
+```haskell
+let addrOutput n pk = TxOutput n $ AddressOutput $ pubKeyAddr pk
+    dataFee = 4
+    evalFee = 10
+    delayBlocks = 200
+    execCond = Threshold 2 [ ExecNode "nLockTime" delayBlocks
+                           , Threshold 1 [ Secp256k1 dealer
+                                         , Secp256k1 player1
+                                         , Secp256k1 player2
+                                         ]
+                           ]
+    startGameTx =
+        let inputs = [ dealerInput ]
+            outputs = [ addrOutput dataFee dealer
+                      , addrOutput dataFee player1
+                      , addrOutput dataFee player2
+                      , execCond
+                      , CarrierOutput (txHash stakeTx)
+                      ]
+         in KTx inputs outputs
+```
+
 ### Transaction: PlayerPayout
 
 The **PlayerPayout** transaction is made on the KMD chain. It is independent of the **StartGame** transaction. It distributes the stake according to a payout vector that is agreed upon by a majority of the players + the dealer.
@@ -215,15 +237,23 @@ PLAYERPAYOUT_TX='{
     }],
     "outputs": [
         {"script": {"condition": {"type": "secp256k1-sha-256", "publicKey": "'$DEALER'"}},
-         "amount": $DEALER_PAYOUT},
+         "amount": '$DEALER_PAYOUT'},
         {"script": {"condition": {"type": "secp256k1-sha-256", "publicKey": "'$PLAYER1'"}},
-         "amount": $PLAYER1_PAYOUT},
+         "amount": '$PLAYER1_PAYOUT'},
         {"script": {"condition": {"type": "secp256k1-sha-256", "publicKey": "'$PLAYER2'"}},
-         "amount": $PLAYER2_PAYOUT}
+         "amount": '$PLAYER2_PAYOUT'}
     ]
 }'
 ```
 
+```haskell
+let playerPayoutTx = KTx
+    [ TxInput (OutPoint stakeTxid 0) payoutCondition ]
+    [ mkPayout dealerPayout
+    , mkPayout player1Payout
+    , mkPayout player2Payout
+    ]
+```
 
 ### Questions
 
