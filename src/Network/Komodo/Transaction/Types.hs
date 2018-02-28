@@ -11,7 +11,7 @@ module Network.Komodo.Transaction.Types
   ) where
 
 import           Control.Applicative
-import           Data.ByteString.Base58
+import qualified Data.ByteString.Base64 as B64
 import           Data.Word
 
 import           Network.Komodo.CryptoConditions
@@ -119,6 +119,7 @@ data OutputScript = CCOutput Condition
                   | AddressOutput Haskoin.Address
                   | PubKeyOutput Haskoin.PubKey
                   | ScriptOutput ByteString
+                  | CarrierOutput ByteString
   deriving (Eq, Show)
 
 
@@ -133,14 +134,18 @@ instance FromJSON OutputScript where
       -- the switch is so that we get the correct parse error
         act <- (getCC <$> o .:- "condition")
            <|> (getAddr <$> o .:- "address")
-           <|> fail "outputscript must contain condition or address"
+           <|> (getReturn <$> o .:- "return")
+           <|> fail "outputscript must contain condition, address, or return"
         act
       getCC val = CCOutput <$> parseJSON val
       getAddr val = AddressOutput <$> parseJSON val
+      getReturn val = CarrierOutput <$> fromB64 val
+      fromB64 = either fail pure . B64.decode . encodeUtf8
 
 
 instance ToJSON OutputScript where
   toJSON (CCOutput cond) = object ["condition" .= cond]
   toJSON (AddressOutput addr) = object ["address" .= addr]
   toJSON (PubKeyOutput pk) = object ["pubkey" .= pk]
+  toJSON (CarrierOutput bs) = object ["return" .= decodeUtf8 (B64.encode bs)]
   toJSON (ScriptOutput script) = toJSON $ decodeUtf8 $ Haskoin.encodeHex script

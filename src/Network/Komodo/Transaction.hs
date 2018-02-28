@@ -55,6 +55,8 @@ toHaskoinOutput (TxOutput amount script) = Haskoin.TxOut amount $
       encode $ Script [opPushData $ encodeCondition cond, OP_CHECKCRYPTOCONDITION]
     (AddressOutput addr) ->
       encode $ Haskoin.encodeOutput $ Haskoin.addressToOutput addr
+    (CarrierOutput bs) ->
+      encode $ Haskoin.encodeOutput $ Haskoin.DataCarrier bs
     (ScriptOutput s) ->
       s
 
