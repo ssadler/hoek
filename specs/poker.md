@@ -155,6 +155,30 @@ STAKE_TX='{
 }';
 ```
 
+In Haskell:
+
+```haskell
+    -- payout is either made by notaries, or dealer + quorum of players
+let payoutCond = Threshold 1 [ EvalNode "subsetNotarySigs" ""
+                             , Threshold 2 [ Secp256k1 dealer
+                                           , Threshold 2 [ Secp256k1 player1
+                                                         , Secp256k1 player2
+                                                         ]
+                                           ]
+                             ]
+    stakeTx = KTx
+        -- players fund game
+        [ player1Input
+        , player2Input
+        ]
+        [ TXOutput stakeAmount $ CCOutput payoutCond
+        -- players send themselves change
+        , player1Change
+        , player2Change
+        ]
+```
+
+
 ### Transaction: StartGame
 
 The **StartGame** transaction is made on the PANGEA chain, and contains the ID of the **Stake** transaction as a data output. The dealer is expected to hold the PANGEA units neccesary to make this transaction. The dealer also provides outputs that are sufficient for the players to post gamestates in the event of a dispute. An exec output is provided that will trigger an on-chain evaluation a subsequent payout; it includes a delay of a number of blocks before it can be triggered.
@@ -202,26 +226,31 @@ STARTGAME_TX='{
 }'
 ```
 
+In Haskell:
+
 ```haskell
 let addrOutput n pk = TxOutput n $ AddressOutput $ pubKeyAddr pk
     dataFee = 4
     evalFee = 10
-    delayBlocks = 200
-    execCond = Threshold 2 [ ExecNode "nLockTime" delayBlocks
-                           , Threshold 1 [ Secp256k1 dealer
-                                         , Secp256k1 player1
-                                         , Secp256k1 player2
-                                         ]
-                           ]
-    startGameTx =
-        let inputs = [ dealerInput ]
-            outputs = [ addrOutput dataFee dealer
-                      , addrOutput dataFee player1
-                      , addrOutput dataFee player2
-                      , execCond
-                      , CarrierOutput (txHash stakeTx)
-                      ]
-         in KTx inputs outputs
+    delayBlocks = undefined
+    startGameTx = KTx
+        -- Dealer provides units of PANGEA
+        [ dealerInput ]
+        -- Output for each player to post game state binary
+        [ addrOutput dataFee dealer
+        , addrOutput dataFee player1
+        , addrOutput dataFee player2
+        -- lock time a certain number of blocks so players can post evidence,
+        -- and require a sig from any participant to initiate Exec
+        Threshold 2 [ ExecNode "nLockTime" delayBlocks
+                    , Threshold 1 [ Secp256k1 dealer
+                                  , Secp256k1 player1
+                                  , Secp256k1 player2
+                                  ]
+                    ]
+        -- StartGame references the Stake txid
+        , CarrierOutput (txHash stakeTx)
+        ]
 ```
 
 ### Transaction: PlayerPayout
@@ -246,9 +275,13 @@ PLAYERPAYOUT_TX='{
 }'
 ```
 
+In Haskell:
+
 ```haskell
 let playerPayoutTx = KTx
+    -- Spending the stake
     [ TxInput (OutPoint stakeTxid 0) payoutCondition ]
+    -- Payout each participant
     [ mkPayout dealerPayout
     , mkPayout player1Payout
     , mkPayout player2Payout
