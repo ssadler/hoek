@@ -62,7 +62,7 @@ Let there be 3 actors: **Dealer**, **Player1**, **Player2**. Each has a public a
 
 The quorum required to close the game consists of **n/2+1 players + dealer**. In a 2 player scenario that means both players plus the dealer.
 
-1. Player1, Player2, and Dealer all agree to sign transaction **Payout**, which spends the **Stake** according to the payout vector output of the **PVM**. The transaction is broadcast to the KMD network and no further action is required.
+1. Player1, Player2, and Dealer all agree to sign transaction **PlayerPayout**, which spends the **Stake** according to the payout vector output of the **PVM**. The transaction is broadcast to the KMD network and no further action is required.
 
 #### Game Closing - Timeout / Dispute
 
@@ -71,11 +71,120 @@ In a 2 player scenario, any single actor may dispute the game and the network wi
 1. A single actor, lets say Player1 decides it is neccesary to invoke an external judiciary entity, in this case the application blockchain. They create a transaction **GameState**, spending their dedicated output of **StartGame**. In a data output of this transaction, they attach the compressed output of the PVM, with signatures from all players.
 1. Player2 and Dealer notice that Player1 has posted evidence. If they wish, they can also post **GameState** transactions. The evidence is simply a game state, which is the output of the **PVM**, signed by all players.
 1. Any player may create a transaction **TriggerReview**, which starts a countdown of a number of blocks, after which the game states will be evaluated. Participants have until this timeout to post their game states.
-1. When **TriggerReview** is accepted into the app chain, the game states will be evaluated on-chain using a call to **PVM**. A notary will take the payout vector is taken from the longest valid gamestate, and use it to compile transaction **Payout**. This transaction will then be broadcast to the KMD chain.
+1. When **TriggerReview** is accepted into the app chain, the game states will be evaluated on-chain using a call to **PVM**. A notary will take the payout vector is taken from the longest valid gamestate, and use it to compile transaction **NotaryPayout**. This transaction will then be broadcast to the KMD chain.
 
 
 ## Transactions
 
 If you havn't already, this might be a good time to refer to the [transaction basics](./basics.md) document.
 
+Transactions in this section are using a format suitable for passing to Hoek to sign and encode.
 
+```shell
+PLAYER1="03c8a965089173d746144cd667c8cedf985460ecc155811bd729e461f0079222f7"
+PLAYER1_SK="Up3VgThhFXFXG7QN5ykym2hkiBrfB76GNhehyUXNG7AJMdLoVPU7"
+PLAYER2="03d6de78061ca1695ba068d15ecf4a5431de9dccce7b45a73bb996e7e596acdba7"
+PLAYER2_SK="UpyycopsYkknBsPd5Y2BLzKrTYVnhKoFL59H49JWn6TqXmJKxER4"
+DEALER="025af7eed280ca8d1ebb294e9388378a2abf5455072c17bdf22506b6aa18dc8a24
+DEALER_SK="UrsT8pXPH1WvfTkkRzP2JsLTB6ebqhH3n6p31UcXpgyoESB9wvPp"
+
+QUORUM=2  # 2/2+1 = 2
+
+PARAMS="[extra params to pass to **PVM**]"
+```
+
+### Transaction: Stake
+
+The **Stake** transaction is made on the KMD chain, and uses inputs from each player, and creates a single CryptoCondition output. The output may either be spent by a quorum of the participants (n/2+1 players + dealer), or by a subset of notaries.
+
+```bash
+PLAYER1_INPUT='[an input from player 1]'
+PLAYER1_CHANGE='[change for player 1]'
+PLAYER2_INPUT='[an input from player 2]'
+PLAYER2_CHANGE='[change for player 2]'
+STAKE_AMOUNT=[stake amount minus fees]
+
+STAKE_TX='{
+    "inputs": [
+        '"$PLAYER1_INPUT"',
+        '"$PLAYER2_INPUT"'
+    ],
+    "outputs": [
+        {
+            "amount": $STAKE_AMOUNT,
+            "script": {
+                "condition": {
+                    {
+                        "type": "threshold-sha-256",
+                        "threshold": 1,
+                        "subfulfillments": [
+                            {
+                                "type": "threshold-sha-256",
+                                "threshold": 2,
+                                "subfulfillments": [
+                                    {
+                                        "type": "secp256k1-sha-256",
+                                        "publicKey": "'$DEALER'"
+                                    },
+                                    {
+                                        "type": "threhsold-sha-256",
+                                        "threshold": '$QUORUM',
+                                        "subfulfillments": [
+                                            {"type": "secp256k1-sha-256", "publicKey": "'$PLAYER1'"},
+                                            {"type": "secp256k1-sha-256", "publicKey": "'$PLAYER2'"}
+                                        ]
+                                    }
+                                ]
+                            },
+                            {"type": "eval-sha-256", "method": "subsetNotarySigs"}
+                        ]
+                    }
+                }
+            }
+        },
+        '"$PLAYER1_CHANGE"',
+        '"$PLAYER2_CHANGE"'
+    ]
+}';
+```
+
+### Transaction: StartGame
+
+The **StartGame** transaction is made on the PANGEA chain, and contains the ID of the **Stake** transaction as a data output. The dealer is expected to hold the PANGEA units neccesary to make this transaction. The dealer also provides outputs that are sufficient for the players to post gamestates in the event of a dispute.
+
+Note: Currently, this transaction may or may not be used; in the case that it is not used, it would be good to provide the dealer with a way to recollect the outputs, even though they maybe just amount to dust.
+
+```bash
+DEALER_INPUT='[an input from dealer]'
+DEALER_CHANGE='[change for dealer]'
+STAKE_TXID="[txid of STAKE_TX]"
+
+DATAFEE=[a fee amount suficient to post a data output]
+EXECFEE=[a fee amount suficient to post an eval]
+
+STARTGAME_TX='{
+    "inputs": ['$DEALER_INPUT'],
+    "outputs": [
+        {"script": {"condition": {"type": "secp256k1-sha-256", "publicKey": "'$DEALER'"}},
+         "amount": $DATAFEE},
+        {"script": {"condition": {"type": "secp256k1-sha-256", "publicKey": "'$PLAYER1'"}},
+         "amount": $DATAFEE},
+        {"script": {"condition": {"type": "secp256k1-sha-256", "publicKey": "'$PLAYER2'"}},
+         "amount": $DATAFEE},
+        {
+            "amount": $EXECFEE,
+            "script": {
+                "type": "threshold-sha-256",
+                "threshold": 1,
+                "subfulfillments": [
+                    {"type": "secp256k1-sha-256", "publicKey": "'$DEALER'"},
+                    {"type": "secp256k1-sha-256", "publicKey": "'$PLAYER1'"},
+                    {"type": "secp256k1-sha-256", "publicKey": "'$PLAYER2'"}
+                ]
+            }
+        }
+    ]
+}'
+```
+
+### Transaction: PlayerPayout
