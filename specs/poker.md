@@ -119,6 +119,8 @@ main =
 
 The **Stake** transaction is made on the KMD chain, and uses inputs from each player, and creates a single CryptoCondition output. The output may either be spent by a quorum of the participants (n/2+1 players + dealer), or by a subset of notaries.
 
+JSON: [txStake.json](./txStake.json)
+
 ```haskell
 -- payout is either made by notaries, or dealer + quorum of players
 payoutCond :: Condition
@@ -152,6 +154,8 @@ stakeTxid = txHash stakeTxEncoded
 The **StartGame** transaction is made on the PANGEA chain, and contains the ID of the **Stake** transaction as a data output. The dealer is expected to hold the PANGEA units neccesary to make this transaction. The dealer also provides outputs that are sufficient for the players to post gamestates in the event of a dispute. An exec output is provided that will trigger an on-chain evaluation a subsequent payout; it includes a delay of a number of blocks before it can be triggered.
 
 Note: Currently, this transaction may or may not be used; in the case that it is not used, it would be good to provide the dealer with a way to recollect the outputs, even though they maybe just amount to dust.
+
+JSON: [txStartGame.json](./txStartGame.json)
 
 ```haskell
 addrOutput :: Amount -> H.PubKey -> TxOutput
@@ -192,6 +196,7 @@ startGameTxid = txHash startGameTxEncoded
 
 The **PlayerPayout** transaction is made on the KMD chain. It is independent of the **StartGame** transaction. It distributes the stake according to a payout vector that is agreed upon by a majority of the players + the dealer.
 
+JSON: [txPlayerPayout.json](./txPlayerPayout.json)
 
 ```haskell
 playerPayoutTx = KTx
@@ -208,6 +213,8 @@ playerPayoutTx = KTx
 
 The **ClaimData** transaction is made on the PANGEA chain. It registers a game state for evaluation, in the case that **PlayerPayout** is not possible for some reason. Each player has the opportunity to perform a **ClaimData** by spending an output of the **StartGame** transaction.
 
+JSON: [txClaimData.json](./txClaimData.json)
+
 ```haskell
 claimDataTx = KTx
   -- Output index depends on who is making the claim
@@ -216,9 +223,11 @@ claimDataTx = KTx
   [ TxOutput 0 $ CarrierOutput "game state for evaluation by PVM" ]
 ```
 
-### Transaction: TriggerClaim
+### Transaction: ResolveClaim
 
 The **ResolveClaim** transaction posts a resolution of the claim. The resulution will be evaluated and the transaction will only be accepted if the claim is correct.
+
+JSON: [txResolveClaim.json](./txResolveClaim.json)
 
 ```haskell
 gameIdx = "the id of the game" :: String
