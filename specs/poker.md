@@ -57,7 +57,8 @@ Let there be 3 actors: **Dealer**, **Player1**, **Player2**. Each has a public a
 
 #### Game Opening
 
-1. Player1 and Player2 join Dealer's game. The game has parameters **Params**, for example, the dealer's commission.
+1. Player1 and Player2 locate and connect to Dealer. That is outside the scope of this document.
+1. The game has a **Params**, for example, the game ID and the dealer's commission.
 1. Player1 and Player2 jointly sign a transaction (**Stake**) on the KMD blockchain. The transaction includes a data output with **Params**. The transaction is reviewed by the dealer, and broadcast to the KMD network.
 1. Dealer creates a transaction (**StartGame**) on the PANGEA network. The transaction has dedicated dispute outputs for each of the players, and the dealer. It also has an output with a timelock, which triggers a review. The transaction is reviewed by the players and broadcast to the PANGEA network.
 1. Game is played privately between players using **PVM** (Poker Virtual Machine).
@@ -84,17 +85,21 @@ If you havn't already, this might be a good time to refer to the [transaction ba
 
 Transactions in this section are using a format suitable for passing to Hoek to sign and encode.
 
-```shell
-PLAYER1="03c8a965089173d746144cd667c8cedf985460ecc155811bd729e461f0079222f7"
-PLAYER1_SK="Up3VgThhFXFXG7QN5ykym2hkiBrfB76GNhehyUXNG7AJMdLoVPU7"
-PLAYER2="03d6de78061ca1695ba068d15ecf4a5431de9dccce7b45a73bb996e7e596acdba7"
-PLAYER2_SK="UpyycopsYkknBsPd5Y2BLzKrTYVnhKoFL59H49JWn6TqXmJKxER4"
-DEALER="025af7eed280ca8d1ebb294e9388378a2abf5455072c17bdf22506b6aa18dc8a24"
-DEALER_SK="UrsT8pXPH1WvfTkkRzP2JsLTB6ebqhH3n6p31UcXpgyoESB9wvPp"
-
-QUORUM=2  # 2/2+1 = 2
-
-PARAMS="[extra params to pass to **PVM**]"
+```haskell
+import Network.Komodo.CryptoConditions
+import Network.Komodo.Transaction
+import Network.Haskoin.Crypto.Keys as H
+dealer="025af7eed280ca8d1ebb294e9388378a2abf5455072c17bdf22506b6aa18dc8a24" :: H.PubKey
+player1="03c8a965089173d746144cd667c8cedf985460ecc155811bd729e461f0079222f7"
+player2="03d6de78061ca1695ba068d15ecf4a5431de9dccce7b45a73bb996e7e596acdba7"
+ecCond pk = Secp256k1 (pubKeyPoint pk) Nothing
+addressInput :: H.PubKey -> InputScript
+addressInput pk = AddressInput $ pubKeyAddr pk
+--PLAYER1_SK="Up3VgThhFXFXG7QN5ykym2hkiBrfB76GNhehyUXNG7AJMdLoVPU7"
+--PLAYER2_SK="UpyycopsYkknBsPd5Y2BLzKrTYVnhKoFL59H49JWn6TqXmJKxER4"
+--DEALER_SK="UrsT8pXPH1WvfTkkRzP2JsLTB6ebqhH3n6p31UcXpgyoESB9wvPp"
+--QUORUM=2  # 2/2+1 = 2
+--PARAMS="[extra params to pass to **PVM**]"
 ```
 
 ### Transaction: Stake
@@ -158,24 +163,26 @@ STAKE_TX='{
 In Haskell:
 
 ```haskell
-    -- payout is either made by notaries, or dealer + quorum of players
-let payoutCond = Threshold 1 [ EvalNode "subsetNotarySigs" ""
-                             , Threshold 2 [ Secp256k1 dealer
-                                           , Threshold 2 [ Secp256k1 player1
-                                                         , Secp256k1 player2
-                                                         ]
-                                           ]
-                             ]
-    stakeTx = KTx
+
+-- payout is either made by notaries, or dealer + quorum of players
+payoutCond :: Condition
+payoutCond = Threshold 1 [ undefined -- EvalNode "subsetNotarySigs" ""
+                         , Threshold 2 [ ecCond dealer
+                                       , Threshold 2 [ ecCond player1
+                                                     , ecCond player2 ] ] ]
+
+mkStakeTx :: KTx
+mkStakeTx =
+  let inputs =
         -- players fund game
-        [ player1Input
-        , player2Input
+        [ TxInput (OutPoint "ec851f0d887638016f5d6818a1ace0038abccdb502d2b0d661c97d853d089a65" 0) 
+                  (addressInput player1)
+        , TxInput (OutPoint "b66de6fc17844c0151c2cfb146435e466290f5aacefb5b3ac1f437a0c7b046d9" 0)
+                  (addressInput player2)
         ]
-        [ TXOutput stakeAmount $ CCOutput payoutCond
-        -- players send themselves change
-        , player1Change
-        , player2Change
-        ]
+      stakeAmount = 1000
+      outputs = [ TxOutput stakeAmount $ CCOutput payoutCond ]
+   in KTx inputs outputs
 ```
 
 
@@ -228,7 +235,7 @@ STARTGAME_TX='{
 
 In Haskell:
 
-```haskell
+```
 let addrOutput n pk = TxOutput n $ AddressOutput $ pubKeyAddr pk
     dataFee = 4
     evalFee = 10
@@ -277,14 +284,14 @@ PLAYERPAYOUT_TX='{
 
 In Haskell:
 
-```haskell
+```
 let playerPayoutTx = KTx
     -- Spending the stake
     [ TxInput (OutPoint stakeTxid 0) payoutCondition ]
     -- Payout each participant
-    [ mkPayout dealerPayout
-    , mkPayout player1Payout
-    , mkPayout player2Payout
+    [ addrOutput dealerPayout dealer
+    , addrOutput player1Payout player1
+    , addrOutput player2Payout player2
     ]
 ```
 
