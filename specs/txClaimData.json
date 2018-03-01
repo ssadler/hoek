@@ -1,0 +1,19 @@
+{
+    "inputs": [
+        {
+            "script": {
+                "address": "RKabR4HsmVU9bKConjm3aGsUfUXrVwDszc"
+            },
+            "idx": 1,
+            "txid": "e07d94b50d21b268a7b3e1adca5f7118c3ad5d78a5a4c6987883725e60ffbad5"
+        }
+    ],
+    "outputs": [
+        {
+            "amount": 0,
+            "script": {
+                "return": "Z2FtZSBzdGF0ZSBmb3IgZXZhbHVhdGlvbiBieSBQVk0="
+            }
+        }
+    ]
+}

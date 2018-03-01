@@ -111,6 +111,8 @@ main =
    in do write "specs/txStake.json" stakeTx
          write "specs/txStartGame.json" startGameTx
          write "specs/txPlayerPayout.json" playerPayoutTx
+         write "specs/txClaimData.json" claimDataTx
+         write "specs/txResolveClaim.json" resolveClaimTx
 ```
 
 ### Transaction: Stake
@@ -157,14 +159,15 @@ addrOutput n pk = TxOutput n $ AddressOutput $ pubKeyAddr pk
 dataFee = 4
 evalFee = 10
 delayBlocks = "some number of blocks"
+-- lock time a certain number of blocks so players can post evidence,
+-- and require a sig from any participant to initiate Exec
+evalClaimCond = Threshold 3 [ Eval "nLockTime" delayBlocks
+                            , Eval "verifyPoker" ""
+                            , Threshold 1 [ ecCond dealer
+                                          , ecCond player1
+                                          , ecCond player2 ] ]
 startGameTx =
-    -- lock time a certain number of blocks so players can post evidence,
-    -- and require a sig from any participant to initiate Exec
-  let evalCond = Threshold 2 [ Eval "nLockTime" delayBlocks
-                             , Threshold 1 [ ecCond dealer
-                                           , ecCond player1
-                                           , ecCond player2 ] ]
-   in KTx
+  KTx
     -- Dealer provides units of PANGEA
     [ TxInput (OutPoint "c44de6fc17844c0151c2cfb146435e466290f5aacefb5b3ac1f437a0c7b046d9" 0)
               (addressInput dealer)
@@ -173,10 +176,16 @@ startGameTx =
     [ addrOutput dataFee dealer
     , addrOutput dataFee player1
     , addrOutput dataFee player2
-    , TxOutput evalFee $ CCOutput evalCond
+    , TxOutput evalFee $ CCOutput evalClaimCond
     -- StartGame references the Stake txid
     , TxOutput dataFee $ CarrierOutput $ encode stakeTxid
     ]
+
+
+startGameTxEncoded :: H.Tx
+Right startGameTxEncoded =
+  runExcept $ signTxSecp256k1 privKeys startGameTx >>= signTxBitcoin privKeys >>= encodeTx
+startGameTxid = txHash startGameTxEncoded
 ```
 
 ### Transaction: PlayerPayout
@@ -194,6 +203,34 @@ playerPayoutTx = KTx
   , addrOutput 1 player2
   ]
 ```
+
+### Transaction: ClaimData
+
+The **ClaimData** transaction is made on the PANGEA chain. It registers a game state for evaluation, in the case that **PlayerPayout** is not possible for some reason. Each player has the opportunity to perform a **ClaimData** by spending an output of the **StartGame** transaction.
+
+```haskell
+claimDataTx = KTx
+  -- Output index depends on who is making the claim
+  [ TxInput (OutPoint startGameTxid 1) (addressInput player1) ]
+  -- There is no output amount, the whole input is fees
+  [ TxOutput 0 $ CarrierOutput "game state for evaluation by PVM" ]
+```
+
+### Transaction: TriggerClaim
+
+The **ResolveClaim** transaction posts a resolution of the claim. The resulution will be evaluated and the transaction will only be accepted if the claim is correct.
+
+```haskell
+gameIdx = "the id of the game" :: String
+resolveClaimTx =
+  let claimIdx = 3 -- zero indexed n participants plus one
+      payout = (gameIdx, [(dealer, 50), (player1, 950), (player2, 0::Amount)])
+   in KTx
+      [ TxInput (OutPoint startGameTxid claimIdx) (ConditionInput evalClaimCond) ]
+      [ TxOutput 0 (CarrierOutput $ encode payout) ]
+
+```
+
 
 ### Questions
 

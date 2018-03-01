@@ -2,35 +2,7 @@
     "inputs": [
         {
             "script": {
-                "address": "RCCtwc9bgpgUGBsJ3g4T2s3W6qpLg1WJ6x"
-            },
-            "idx": 0,
-            "txid": "c44de6fc17844c0151c2cfb146435e466290f5aacefb5b3ac1f437a0c7b046d9"
-        }
-    ],
-    "outputs": [
-        {
-            "amount": 4,
-            "script": {
-                "address": "RCCtwc9bgpgUGBsJ3g4T2s3W6qpLg1WJ6x"
-            }
-        },
-        {
-            "amount": 4,
-            "script": {
-                "address": "RKabR4HsmVU9bKConjm3aGsUfUXrVwDszc"
-            }
-        },
-        {
-            "amount": 4,
-            "script": {
-                "address": "RCGyMKx6Lyhpfp4AC4xXbABJu8VXoE7aoh"
-            }
-        },
-        {
-            "amount": 10,
-            "script": {
-                "condition": {
+                "fulfillment": {
                     "subfulfillments": [
                         {
                             "method": "nLockTime",
@@ -64,12 +36,16 @@
                     "threshold": 3,
                     "type": "threshold-sha-256"
                 }
-            }
-        },
+            },
+            "idx": 3,
+            "txid": "e07d94b50d21b268a7b3e1adca5f7118c3ad5d78a5a4c6987883725e60ffbad5"
+        }
+    ],
+    "outputs": [
         {
-            "amount": 4,
+            "amount": 0,
             "script": {
-                "return": "+eD5DPWDHzNopeENiUHTs48nYULscXGzBEwgHTAq5X4="
+                "return": "AAAAAAAAABJ0aGUgaWQgb2YgdGhlIGdhbWUAAAAAAAAAAwJa9+7SgMqNHrspTpOIN4oqv1RVBywXvfIlBraqGNyKJAAAAAAAAAAyA8ipZQiRc9dGFEzWZ8jO35hUYOzBVYEb1ynkYfAHkiL3AAAAAAAAA7YD1t54BhyhaVugaNFez0pUMd6dzM57Rac7uZbn5Zas26cAAAAAAAAAAA=="
             }
         }
     ]
