@@ -88,93 +88,45 @@ If you havn't already, this might be a good time to refer to the [transaction ba
 Transactions in this section are using a format suitable for passing to Hoek to sign and encode.
 
 ```haskell
+import Data.Aeson.Encode.Pretty
+import Data.ByteString.Lazy.Char8 as C8L
+import Data.Serialize
 import Network.Komodo.CryptoConditions
 import Network.Komodo.Transaction
 import Network.Haskoin.Crypto.Keys as H
+import Network.Haskoin.Transaction as H
+import Network.Komodo.Prelude
 dealer="025af7eed280ca8d1ebb294e9388378a2abf5455072c17bdf22506b6aa18dc8a24" :: H.PubKey
 player1="03c8a965089173d746144cd667c8cedf985460ecc155811bd729e461f0079222f7"
 player2="03d6de78061ca1695ba068d15ecf4a5431de9dccce7b45a73bb996e7e596acdba7"
 ecCond pk = Secp256k1 (pubKeyPoint pk) Nothing
 addressInput :: H.PubKey -> InputScript
 addressInput pk = AddressInput $ pubKeyAddr pk
---PLAYER1_SK="Up3VgThhFXFXG7QN5ykym2hkiBrfB76GNhehyUXNG7AJMdLoVPU7"
---PLAYER2_SK="UpyycopsYkknBsPd5Y2BLzKrTYVnhKoFL59H49JWn6TqXmJKxER4"
---DEALER_SK="UrsT8pXPH1WvfTkkRzP2JsLTB6ebqhH3n6p31UcXpgyoESB9wvPp"
---QUORUM=2  # 2/2+1 = 2
---PARAMS="[extra params to pass to **PVM**]"
+privKeys = [ "UrsT8pXPH1WvfTkkRzP2JsLTB6ebqhH3n6p31UcXpgyoESB9wvPp" -- dealer
+           , "Up3VgThhFXFXG7QN5ykym2hkiBrfB76GNhehyUXNG7AJMdLoVPU7" -- player1
+           , "UpyycopsYkknBsPd5Y2BLzKrTYVnhKoFL59H49JWn6TqXmJKxER4" -- player2
+           ]
+main =
+  let write path tx = C8L.writeFile path $ encodePretty tx
+   in do write "specs/txStake.json" stakeTx
+         write "specs/txStartGame.json" startGameTx
+         write "specs/txPlayerPayout.json" playerPayoutTx
 ```
 
 ### Transaction: Stake
 
 The **Stake** transaction is made on the KMD chain, and uses inputs from each player, and creates a single CryptoCondition output. The output may either be spent by a quorum of the participants (n/2+1 players + dealer), or by a subset of notaries.
 
-```bash
-PLAYER1_INPUT='[an input from player 1]'
-PLAYER1_CHANGE='[change for player 1]'
-PLAYER2_INPUT='[an input from player 2]'
-PLAYER2_CHANGE='[change for player 2]'
-STAKE_AMOUNT='[stake amount minus fees]'
-
-PAYOUT_SCRIPT='{
-    "condition": {
-        {
-            "type": "threshold-sha-256",
-            "threshold": 1,
-            "subfulfillments": [
-                {
-                    "type": "threshold-sha-256",
-                    "threshold": 2,
-                    "subfulfillments": [
-                        {
-                            "type": "secp256k1-sha-256",
-                            "publicKey": "'$DEALER'"
-                        },
-                        {
-                            "type": "threhsold-sha-256",
-                            "threshold": '$QUORUM',
-                            "subfulfillments": [
-                                {"type": "secp256k1-sha-256", "publicKey": "'$PLAYER1'"},
-                                {"type": "secp256k1-sha-256", "publicKey": "'$PLAYER2'"}
-                            ]
-                        }
-                    ]
-                },
-                {"type": "eval-sha-256", "method": "subsetNotarySigs"}
-            ]
-        }
-    }
-}'
-
-
-STAKE_TX='{
-    "inputs": [
-        '"$PLAYER1_INPUT"',
-        '"$PLAYER2_INPUT"'
-    ],
-    "outputs": [
-        {
-            "amount": '$STAKE_AMOUNT',
-            "script": '$PAYOUT_SCRIPT'
-        },
-        '"$PLAYER1_CHANGE"',
-        '"$PLAYER2_CHANGE"'
-    ]
-}';
-```
-
-In Haskell:
-
 ```haskell
-
 -- payout is either made by notaries, or dealer + quorum of players
 payoutCond :: Condition
-payoutCond = Threshold 1 [ undefined -- EvalNode "subsetNotarySigs" ""
+payoutCond = Threshold 1 [ Eval "subsetNotarySigs" ""
                          , Threshold 2 [ ecCond dealer
                                        , Threshold 2 [ ecCond player1
                                                      , ecCond player2 ] ] ]
 
-mkStakeTx :: KTx
-mkStakeTx =
+stakeTx :: KTx
+stakeTx =
   let inputs =
         -- players fund game
         [ TxInput (OutPoint "ec851f0d887638016f5d6818a1ace0038abccdb502d2b0d661c97d853d089a65" 0) 
@@ -185,6 +137,11 @@ mkStakeTx =
       stakeAmount = 1000
       outputs = [ TxOutput stakeAmount $ CCOutput payoutCond ]
    in KTx inputs outputs
+
+stakeTxEncoded :: H.Tx
+Right stakeTxEncoded =
+  runExcept $ signTxSecp256k1 privKeys stakeTx >>= signTxBitcoin privKeys >>= encodeTx
+stakeTxid = txHash stakeTxEncoded
 ```
 
 
@@ -194,107 +151,48 @@ The **StartGame** transaction is made on the PANGEA chain, and contains the ID o
 
 Note: Currently, this transaction may or may not be used; in the case that it is not used, it would be good to provide the dealer with a way to recollect the outputs, even though they maybe just amount to dust.
 
-```bash
-DEALER_INPUT='[an input from dealer]'
-DEALER_CHANGE='[change for dealer]'
-STAKE_TXID="[txid of STAKE_TX]"
-
-DATAFEE=[a fee suficient to post a data output]
-EXECFEE=[a fee suficient to post an eval]
-
-STARTGAME_TX='{
-    "inputs": ['$DEALER_INPUT'],
-    "outputs": [
-        {"script": {"condition": {"type": "secp256k1-sha-256", "publicKey": "'$DEALER'"}},
-         "amount": $DATAFEE},
-        {"script": {"condition": {"type": "secp256k1-sha-256", "publicKey": "'$PLAYER1'"}},
-         "amount": $DATAFEE},
-        {"script": {"condition": {"type": "secp256k1-sha-256", "publicKey": "'$PLAYER2'"}},
-         "amount": $DATAFEE},
-        {
-            "amount": $EXECFEE,
-            "script": {
-                "type": "threshold-sha-256",
-                "threshold": 2,
-                "subfulfillments": [
-                    {"type": "nLockTime", "blocks": $EVAL_DELAY_BLOCKS},
-                    {
-                        "type": "threshold-sha-256",
-                        "threshold": 1,
-                        "subfulfillments": [
-                            {"type": "secp256k1-sha-256", "publicKey": "'$DEALER'"},
-                            {"type": "secp256k1-sha-256", "publicKey": "'$PLAYER1'"},
-                            {"type": "secp256k1-sha-256", "publicKey": "'$PLAYER2'"}
-                        ]
-                    }
-                ]
-            }
-        },
-        {"script": {"return": "'$STAKE_TXID'"}, "amount": $DATAFEE},
+```haskell
+addrOutput :: Amount -> H.PubKey -> TxOutput
+addrOutput n pk = TxOutput n $ AddressOutput $ pubKeyAddr pk
+dataFee = 4
+evalFee = 10
+delayBlocks = "some number of blocks"
+startGameTx =
+    -- lock time a certain number of blocks so players can post evidence,
+    -- and require a sig from any participant to initiate Exec
+  let evalCond = Threshold 2 [ Eval "nLockTime" delayBlocks
+                             , Threshold 1 [ ecCond dealer
+                                           , ecCond player1
+                                           , ecCond player2 ] ]
+   in KTx
+    -- Dealer provides units of PANGEA
+    [ TxInput (OutPoint "c44de6fc17844c0151c2cfb146435e466290f5aacefb5b3ac1f437a0c7b046d9" 0)
+              (addressInput dealer)
     ]
-}'
-```
-
-In Haskell:
-
-```
-let addrOutput n pk = TxOutput n $ AddressOutput $ pubKeyAddr pk
-    dataFee = 4
-    evalFee = 10
-    delayBlocks = undefined
-    startGameTx = KTx
-        -- Dealer provides units of PANGEA
-        [ dealerInput ]
-        -- Output for each player to post game state binary
-        [ addrOutput dataFee dealer
-        , addrOutput dataFee player1
-        , addrOutput dataFee player2
-        -- lock time a certain number of blocks so players can post evidence,
-        -- and require a sig from any participant to initiate Exec
-        Threshold 2 [ ExecNode "nLockTime" delayBlocks
-                    , Threshold 1 [ Secp256k1 dealer
-                                  , Secp256k1 player1
-                                  , Secp256k1 player2
-                                  ]
-                    ]
-        -- StartGame references the Stake txid
-        , CarrierOutput (txHash stakeTx)
-        ]
+    -- Output for each player to post game state binary
+    [ addrOutput dataFee dealer
+    , addrOutput dataFee player1
+    , addrOutput dataFee player2
+    , TxOutput evalFee $ CCOutput evalCond
+    -- StartGame references the Stake txid
+    , TxOutput dataFee $ CarrierOutput $ encode stakeTxid
+    ]
 ```
 
 ### Transaction: PlayerPayout
 
 The **PlayerPayout** transaction is made on the KMD chain. It is independent of the **StartGame** transaction. It distributes the stake according to a payout vector that is agreed upon by a majority of the players + the dealer.
 
-```bash
-PLAYERPAYOUT_TX='{
-    "inputs": [{
-        "txid": "'$STAKE_TXID'",
-        "idx": 0,
-        "script": '$PAYOUT_SCRIPT'
-    }],
-    "outputs": [
-        {"script": {"condition": {"type": "secp256k1-sha-256", "publicKey": "'$DEALER'"}},
-         "amount": '$DEALER_PAYOUT'},
-        {"script": {"condition": {"type": "secp256k1-sha-256", "publicKey": "'$PLAYER1'"}},
-         "amount": '$PLAYER1_PAYOUT'},
-        {"script": {"condition": {"type": "secp256k1-sha-256", "publicKey": "'$PLAYER2'"}},
-         "amount": '$PLAYER2_PAYOUT'}
-    ]
-}'
-```
 
-In Haskell:
-
-```
-let playerPayoutTx = KTx
-    -- Spending the stake
-    [ TxInput (OutPoint stakeTxid 0) payoutCondition ]
-    -- Payout each participant
-    [ addrOutput dealerPayout dealer
-    , addrOutput player1Payout player1
-    , addrOutput player2Payout player2
-    ]
+```haskell
+playerPayoutTx = KTx
+  -- Spending the stake
+  [ TxInput (OutPoint stakeTxid 0) $ ConditionInput payoutCond ]
+  -- Payout each participant
+  [ addrOutput 50 dealer
+  , addrOutput 950 player1
+  , addrOutput 1 player2
+  ]
 ```
 
 ### Questions

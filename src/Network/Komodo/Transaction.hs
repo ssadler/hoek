@@ -2,6 +2,7 @@
 
 module Network.Komodo.Transaction 
   ( module Types
+  , H.txHash
   , encodeTx
   , decodeTx
   , signTxEd25519

@@ -1,7 +1,8 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 module Network.Komodo.Transaction.Types 
-  ( KTx(..)
+  ( Amount
+  , KTx(..)
   , InputScript(..)
   , Haskoin.OutPoint(..)
   , Haskoin.TxHash(..)
@@ -143,3 +144,6 @@ instance ToJSON OutputScript where
   toJSON (PubKeyOutput pk) = object ["pubkey" .= pk]
   toJSON (CarrierOutput bs) = object ["return" .= decodeUtf8 (B64.encode bs)]
   toJSON (ScriptOutput script) = toJSON $ decodeUtf8 $ Haskoin.encodeHex script
+
+
+type Amount = Word64

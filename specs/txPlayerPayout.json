@@ -1,0 +1,65 @@
+{
+    "inputs": [
+        {
+            "script": {
+                "fulfillment": {
+                    "subfulfillments": [
+                        {
+                            "method": "subsetNotarySigs",
+                            "preimage": "",
+                            "type": "eval-sha-256"
+                        },
+                        {
+                            "subfulfillments": [
+                                {
+                                    "publicKey": "025af7eed280ca8d1ebb294e9388378a2abf5455072c17bdf22506b6aa18dc8a24",
+                                    "type": "secp256k1-sha-256"
+                                },
+                                {
+                                    "subfulfillments": [
+                                        {
+                                            "publicKey": "03c8a965089173d746144cd667c8cedf985460ecc155811bd729e461f0079222f7",
+                                            "type": "secp256k1-sha-256"
+                                        },
+                                        {
+                                            "publicKey": "03d6de78061ca1695ba068d15ecf4a5431de9dccce7b45a73bb996e7e596acdba7",
+                                            "type": "secp256k1-sha-256"
+                                        }
+                                    ],
+                                    "threshold": 2,
+                                    "type": "threshold-sha-256"
+                                }
+                            ],
+                            "threshold": 2,
+                            "type": "threshold-sha-256"
+                        }
+                    ],
+                    "threshold": 1,
+                    "type": "threshold-sha-256"
+                }
+            },
+            "idx": 0,
+            "txid": "7ee52a301d204c04b37171ec4261278fb3d341890de1a568331f83f50cf9e0f9"
+        }
+    ],
+    "outputs": [
+        {
+            "amount": 50,
+            "script": {
+                "address": "RCCtwc9bgpgUGBsJ3g4T2s3W6qpLg1WJ6x"
+            }
+        },
+        {
+            "amount": 950,
+            "script": {
+                "address": "RKabR4HsmVU9bKConjm3aGsUfUXrVwDszc"
+            }
+        },
+        {
+            "amount": 1,
+            "script": {
+                "address": "RCGyMKx6Lyhpfp4AC4xXbABJu8VXoE7aoh"
+            }
+        }
+    ]
+}

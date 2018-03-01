@@ -48,4 +48,3 @@ parseEval construct = do
 verifyEval :: Method -> Params -> Message -> Bool
 verifyEval _ _ _ = True
 
-
