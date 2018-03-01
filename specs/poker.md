@@ -53,7 +53,9 @@ The below table illustrates:
 
 ### Blockchain Poker
 
-Let there be 3 actors: **Dealer**, **Player1**, **Player2**. Each has a public and a private key.
+![Alt text](./sequence.svg)
+
+Let there be actors: **Dealer**, **Player1**, **Player2**. Each has a public and a private key. Addionally, **Notary** is an oracle backed by a collection of network node operators.
 
 #### Game Opening
 
@@ -76,7 +78,7 @@ In a 2 player scenario, any single actor may dispute the game and the network wi
 1. A single actor, lets say Player1 decides it is neccesary to invoke an external judiciary entity, in this case the application blockchain. They create a transaction **GameState**, spending their dedicated output of **StartGame**. In a data output of this transaction, they attach the compressed output of the PVM, with signatures from all players.
 1. Player2 and Dealer notice that Player1 has posted evidence. If they wish, they can also post **GameState** transactions. The evidence is simply a game state, which is the output of the **PVM**, signed by all players.
 1. Any player may create a transaction **TriggerReview**, which starts a countdown of a number of blocks, after which the game states will be evaluated. Participants have until this timeout to post their game states.
-1. When **TriggerReview** is accepted into the app chain, the game states will be evaluated on-chain using a call to **PVM**. A notary will take the payout vector is taken from the longest valid gamestate, and use it to compile transaction **NotaryPayout**. This transaction will then be broadcast to the KMD chain.
+1. When **TriggerReview** is accepted into the app chain, the game states will be evaluated on-chain using a call to **PVM**. **Notary** will take the payout vector is taken from the longest valid gamestate, and use it to compile transaction **NotaryPayout**. This transaction will then be broadcast to the KMD chain.
 
 
 ## Transactions
