@@ -24,6 +24,7 @@ dependencies:
 - aeson-pretty
 - attoparsec
 - base58-bytestring
+- base64-bytestring
 - bytestring
 - cereal
 - containers

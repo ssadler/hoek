@@ -62,8 +62,7 @@ instance FromJSON TxInput where
 -- | Input Script
 --
 data InputScript = ConditionInput Condition
-                 | PubKeyHashInput Haskoin.Hash160
-                 | ScriptHashInput Haskoin.Hash160
+                 | AddressInput Haskoin.Address
                  | PubKeyInput Haskoin.PubKey
                  | ScriptInput ByteString
   deriving (Eq, Show)
@@ -83,18 +82,13 @@ instance FromJSON InputScript where
            <|> fail "inputscript must contain fulfillment, address or pubkey"
         act
       getCC val = ConditionInput <$> parseJSON val
-      getAddress val = do 
-          addr <- parseJSON val
-          pure $ case addr of
-                      Haskoin.PubKeyAddress h160 -> PubKeyHashInput h160
-                      Haskoin.ScriptAddress h160 -> ScriptHashInput h160
-      getPubKey val = do PubKeyInput <$> parseJSON val
+      getAddress val = AddressInput <$> parseJSON val
+      getPubKey val = PubKeyInput <$> parseJSON val
 
 
 instance ToJSON InputScript where
   toJSON (ConditionInput cond) = object ["fulfillment" .= cond]
-  toJSON (PubKeyHashInput addr) = object ["address" .= Haskoin.PubKeyAddress addr]
-  toJSON (ScriptHashInput addr) = object ["address" .= Haskoin.ScriptAddress addr]
+  toJSON (AddressInput addr) = object ["address" .= addr]
   toJSON (PubKeyInput pk) = object ["pubkey" .= pk]
   toJSON (ScriptInput script) = toJSON $ decodeUtf8 $ Haskoin.encodeHex script
 
