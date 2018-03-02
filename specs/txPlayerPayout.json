@@ -5,11 +5,6 @@
                 "fulfillment": {
                     "subfulfillments": [
                         {
-                            "method": "subsetNotarySigs",
-                            "preimage": "",
-                            "type": "eval-sha-256"
-                        },
-                        {
                             "subfulfillments": [
                                 {
                                     "publicKey": "025af7eed280ca8d1ebb294e9388378a2abf5455072c17bdf22506b6aa18dc8a24",
@@ -32,6 +27,11 @@
                             ],
                             "threshold": 2,
                             "type": "threshold-sha-256"
+                        },
+                        {
+                            "method": "ImportPayoutVector",
+                            "preimage": "ySihumCqazLA8e3NHWZ2wA6SPSMxp2vuBDEsI4V49-g",
+                            "type": "eval-sha-256"
                         }
                     ],
                     "threshold": 1,
@@ -39,7 +39,7 @@
                 }
             },
             "idx": 0,
-            "txid": "7ee52a301d204c04b37171ec4261278fb3d341890de1a568331f83f50cf9e0f9"
+            "txid": "ecde904c35f25d99212e2bcc44202a8a375baf00c8352817360a3a9f628b0135"
         }
     ],
     "outputs": [

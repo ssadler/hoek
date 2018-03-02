@@ -5,11 +5,6 @@
                 "fulfillment": {
                     "subfulfillments": [
                         {
-                            "method": "subsetNotarySigs",
-                            "preimage": "",
-                            "type": "eval-sha-256"
-                        },
-                        {
                             "subfulfillments": [
                                 {
                                     "publicKey": "025af7eed280ca8d1ebb294e9388378a2abf5455072c17bdf22506b6aa18dc8a24",
@@ -32,6 +27,11 @@
                             ],
                             "threshold": 2,
                             "type": "threshold-sha-256"
+                        },
+                        {
+                            "method": "ImportPayoutVector",
+                            "preimage": "ySihumCqazLA8e3NHWZ2wA6SPSMxp2vuBDEsI4V49-g",
+                            "type": "eval-sha-256"
                         }
                     ],
                     "threshold": 1,
@@ -39,14 +39,14 @@
                 }
             },
             "idx": 0,
-            "txid": "7ee52a301d204c04b37171ec4261278fb3d341890de1a568331f83f50cf9e0f9"
+            "txid": "ecde904c35f25d99212e2bcc44202a8a375baf00c8352817360a3a9f628b0135"
         }
     ],
     "outputs": [
         {
             "amount": 0,
             "script": {
-                "return": "AQAAAAHVuv9gXnKDeJjGpKV4Xa3DGHFfyq3hs6dosiENtZR94AMAAAD9/wBM/aKB+qCB9a8igAluTG9ja1RpbWWBFXNvbWUgbnVtYmVyIG9mIGJsb2Nrc68PgAt2ZXJpZnlQb2tlcoEAooG9oGelZYAhAlr37tKAyo0euylOk4g3iiq/VFUHLBe98iUGtqoY3IokgUC/iDULdAgaL/tWhqnye+Z2mhAZ62HyOkPuYhzr//dqoQfS3RAPpJ+uJeSOuL2+zBmlNGEqgo0C5kQfYtMNooBioVKlJ4AgUKkXjcLVF3OC6ehr4mE++mLZjXi3RARQS0WaE0/WusaBAwIAAKUngCDomCMlqBSBf0MOcOKyx3WRcDIjLC9pJtrt2FBm6mDQL4EDAgAAoQAAAAAAAQAAAAAAAAAAT2pMTAAAAAAAAAACMgAAAAAAAAAZdqkUIBhopjN1v+3xIcC0cJjbuJPH7uKIrLYDAAAAAAAAGXapFHD7z1Oicr9rtNvMTOFj92efeMUuiKwAAAAA"
+                "return": "AQAAAAHJKKG6YKprMsDx7c0dZnbADpI9IzGna+4EMSwjhXj36AMAAAD9/wBM/aKB+qCB9a8igAluTG9ja1RpbWWBFXNvbWUgbnVtYmVyIG9mIGJsb2Nrc68PgAt2ZXJpZnlQb2tlcoEAooG9oGelZYAhAlr37tKAyo0euylOk4g3iiq/VFUHLBe98iUGtqoY3IokgUCtPGE1zuQSYCmM9qqpH8cAT86iObvkzuBmYZRBZpxoZh9nYjbePqHFBf3WaEq9IloXazh30zPqUESrJQBg3HcKoVKlJ4AgUKkXjcLVF3OC6ehr4mE++mLZjXi3RARQS0WaE0/WusaBAwIAAKUngCDomCMlqBSBf0MOcOKyx3WRcDIjLC9pJtrt2FBm6mDQL4EDAgAAoQAAAAAAAQAAAAAAAAAAT2pMTAAAAAAAAAACMgAAAAAAAAAZdqkUIBhopjN1v+3xIcC0cJjbuJPH7uKIrLYDAAAAAAAAGXapFHD7z1Oicr9rtNvMTOFj92efeMUuiKwAAAAA"
             }
         },
         {

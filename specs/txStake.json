@@ -22,11 +22,6 @@
                 "condition": {
                     "subfulfillments": [
                         {
-                            "method": "subsetNotarySigs",
-                            "preimage": "",
-                            "type": "eval-sha-256"
-                        },
-                        {
                             "subfulfillments": [
                                 {
                                     "publicKey": "025af7eed280ca8d1ebb294e9388378a2abf5455072c17bdf22506b6aa18dc8a24",
@@ -49,6 +44,11 @@
                             ],
                             "threshold": 2,
                             "type": "threshold-sha-256"
+                        },
+                        {
+                            "method": "ImportPayoutVector",
+                            "preimage": "ySihumCqazLA8e3NHWZ2wA6SPSMxp2vuBDEsI4V49-g",
+                            "type": "eval-sha-256"
                         }
                     ],
                     "threshold": 1,

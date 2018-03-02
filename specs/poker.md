@@ -89,10 +89,13 @@ Transactions in this section are using a format suitable for passing to Hoek to 
 
 ```haskell
 import Data.Aeson.Encode.Pretty
+import Data.Bits
 import Data.ByteString.Lazy.Char8 as C8L
 import Data.Serialize
 import Network.Komodo.CryptoConditions
 import Network.Komodo.Transaction
+import Network.Haskoin.Crypto as H
+import Network.Haskoin.Block.Merkle as H
 import Network.Haskoin.Crypto.Keys as H
 import Network.Haskoin.Transaction as H
 import Network.Komodo.Prelude
@@ -126,11 +129,11 @@ JSON: [txStake.json](./txStake.json)
 The **Stake** transaction is made on the KMD chain, and uses inputs from each player, and creates a single CryptoCondition output. The output may either be spent by a quorum of the participants (n/2+1 players + dealer), or by a subset of notaries.
 
 ```haskell
--- payout is either made by notaries, or dealer + quorum of players
-payoutCond = Threshold 1 [ Eval "subsetNotarySigs" ""
-                         , Threshold 2 [ ecCond dealer
-                                       , Threshold 2 [ ecCond player1
-                                                     , ecCond player2 ] ] ]
+-- payout is either ImportPayoutVector or quorum
+quorumCond = Threshold 2 [ ecCond dealer
+                         , Threshold 2 [ ecCond player1, ecCond player2 ] ]
+payoutCond = Threshold 1 [ quorumCond
+                         , Eval "ImportPayoutVector" (encode startGameTxid) ]
 
 stakeTx =
   let inputs =
@@ -180,8 +183,6 @@ startGameTx =
     , addrOutput dataFee player1
     , addrOutput dataFee player2
     , TxOutput evalFee $ CCOutput evalClaimCond
-    -- StartGame references the Stake txid
-    , TxOutput dataFee $ CarrierOutput $ encode stakeTxid
     ]
 
 
@@ -249,11 +250,44 @@ The **PayoutClaim** transaction executes a payout vector with reference to a **R
 ```haskell
 payoutClaimTx =
   let (KTx _ [TxOutput _ (CarrierOutput payoutsBs)]) = resolveClaimTx
+      txOutResolveClaim = TxOutput 0 $ CarrierOutput $ encode $ signEncode resolveClaimTx
+      txOutNotaryProof = TxOutput 0 $ CarrierOutput "proof"
    in KTx
-      [ TxInput (OutPoint stakeTxid 0) $ ConditionInput payoutCond ]
-      ([ TxOutput 0 (CarrierOutput $ encode $ signEncode resolveClaimTx)
-       , TxOutput 0 (CarrierOutput "proof")
-       ] ++ payouts)
+      [ TxInput (OutPoint stakeTxid 0) (ConditionInput payoutCond) ]
+      ([ txOutResolveClaim , txOutNotaryProof ] ++ payouts)
+
+```
+
+### Notary Proof
+
+The notary proof is neccesary since we are importing a paying vector from another chain. So the notaries are used as an oracle to say that the referenced transaction was accepted by the app-chain.
+
+App chains of this type will intermittently post notarisations to the value chain (KMD). These notarisations indicate that the block being notarised has some degree of finality, which we are going to accept. Given a transaction ID, the SPV protocol can be used to verify that it exists in a block. However, not every block is notarised, because app chains may have short block times, so they may only notarise every 100 blocks or so. In this case, in order to support payment verification across chains, the notarisation will include a **MOM** ("Merkle of Merkles").
+
+The **MOM** is simply a binary [Merkle Tree](https://en.wikipedia.org/wiki/Merkle_tree) where the leaf nodes are all the transaction merkle roots since the last notarisation, and up to and including the block currently being notarised.
+
+[**SPV**](https://bitcoin.org/en/glossary/simplified-payment-verification) protocol provides a merkle vector to verify that a transaction ID is contained in a block:
+
+`txid -> merkle vector -> block merkle root`
+
+So in this case we concatenate the **SPV** merkle vector and the **MOM** merkle vector so it reaches all the way to the **MOM**:
+
+`txid -> merkle vector -> MOM`
+
+We're not really worried about if or when the block merkle root is encountered. Just that we can use the merkle vector to go from the txid to to **MOM**. The merkle vector is a list of tuples, each containing a hash and whether or not the hash is a prefix (if not, it's a suffix):
+
+
+```haskell
+type MerkleBranch = ([H.Hash256], Int)
+type MOM = H.Hash256
+
+execMerkleBranch :: MerkleBranch -> H.Hash256 -> H.Hash256
+execMerkleBranch ([],_) hashFrom = hashFrom
+execMerkleBranch (n:xs,p) hashFrom = execMerkleBranch (xs,shiftR p 1) $
+  (if testBit p 1 then id else flip) H.hash2 n hashFrom
+
+verifyMerkleBranch :: MerkleBranch -> TxHash -> MOM -> Bool
+verifyMerkleBranch mv txid mom = execMerkleBranch mv (getTxHash txid) == mom
 
 ```
 

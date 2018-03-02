@@ -65,12 +65,6 @@
                     "type": "threshold-sha-256"
                 }
             }
-        },
-        {
-            "amount": 4,
-            "script": {
-                "return": "+eD5DPWDHzNopeENiUHTs48nYULscXGzBEwgHTAq5X4="
-            }
         }
     ]
 }
