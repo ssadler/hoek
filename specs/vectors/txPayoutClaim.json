@@ -29,7 +29,7 @@
                             "type": "threshold-sha-256"
                         },
                         {
-                            "method": "ImportPayoutVector",
+                            "method": "ImportPayout",
                             "preimage": "XuGb4lSHKqYx4fedPcVIbKAgnNLyfbgzZHA7pqUF8vA",
                             "type": "eval-sha-256"
                         }
@@ -39,10 +39,22 @@
                 }
             },
             "idx": 0,
-            "txid": "503185a785d847898225049788fe70ab50410247ade59023b55fe40bf96008d4"
+            "txid": "cabe8197fbbaf51281cc22138f9df8d222f45f2d7ba1ef1b08c5ebba14204640"
         }
     ],
     "outputs": [
+        {
+            "amount": 0,
+            "script": {
+                "return": "AQAAAAFe4ZviVIcqpjHh9509xUhsoCCc0vJ9uDNkcDumpQXy8AMAAAD9/gBM/KKB+aCB9K8hgAhMb2NrVGltZYEVc29tZSBudW1iZXIgb2YgYmxvY2tzrw+AC1ZlcmlmeVBva2VygQCigb2gZ6VlgCECWvfu0oDKjR67KU6TiDeKKr9UVQcsF73yJQa2qhjciiSBQGQ/iphJyl6Ji7BOuVgAv6/11X6hxB4V88CbdCuO7r4xZ3fFGsXD/p9E7aNJpq3wsJSDgMYXenDAnCqR/xVmAOmhUqUngCBQqReNwtUXc4Lp6GviYT76YtmNeLdEBFBLRZoTT9a6xoEDAgAApSeAIOiYIyWoFIF/Qw5w4rLHdZFwMiMsL2km2u3YUGbqYNAvgQMCAAChAAAAAAABAAAAAAAAAABPakxMAAAAAAAAAAIyAAAAAAAAABl2qRQgGGimM3W/7fEhwLRwmNu4k8fu4oistgMAAAAAAAAZdqkUcPvPU6Jyv2u028xM4WP3Z594xS6IrAAAAAA="
+            }
+        },
+        {
+            "amount": 0,
+            "script": {
+                "return": "AQAAAAABAAABAQAAAAAAAAAAAQAAAAEBAQABAAEAAAAC47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFVf7Otm/8hvONlSeGxtaWx5wtvCOd1OkbRnKdc6J/tX6QI="
+            }
+        },
         {
             "amount": 50,
             "script": {

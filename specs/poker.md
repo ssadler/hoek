@@ -10,16 +10,16 @@ To facilitate participation in off-chain smart contracts on the [Komodo Platform
       * [Game Closing - Common case](#game-closing---common-case)
       * [Game Closing - Timeout / Dispute](#game-closing---timeout--dispute)
 * [Transactions](#transactions)
-   * [Transaction: Stake](#transaction-stake)
-   * [Transaction: StartGame](#transaction-startgame)
+   * [Transaction: Fund](#transaction-stake)
+   * [Transaction: Session](#transaction-startgame)
    * [Transaction: PlayerPayout](#transaction-playerpayout)
-   * [Transaction: ClaimData](#transaction-claimdata)
+   * [Transaction: PostClaim](#transaction-claimdata)
    * [Transaction: ResolveClaim](#transaction-resolveclaim)
-   * [Transaction: PayoutClaim](#transaction-payoutclaim)
+   * [Transaction: ClaimPayout](#transaction-payoutclaim)
    * [Notary proof format using MOM](#notary-proof-format-using-mom)
    * [Chain func: LockTime](#chain-func-locktime)
    * [Chain func: VerifyPoker](#chain-func-verifypoker)
-   * [Chain func: ImportPayoutVector](#chain-func-importpayoutvector)
+   * [Chain func: ImportPayout](#chain-func-importpayout)
 
 ## Introduction
 
@@ -71,21 +71,21 @@ Let there be actors: **Dealer**, **Player1**, **Player2**. Each has a public and
 
 1. Player1 and Player2 locate and connect to Dealer. That is outside the scope of this document.
 1. The game has a **Params**, for example, the game ID and the dealer's commission.
-1. Player1 and Player2 jointly sign a transaction (**Stake**) on the KMD blockchain. The transaction includes a data output with **Params**. The transaction is reviewed by the dealer, and broadcast to the KMD network.
-1. Dealer creates a transaction (**StartGame**) on the PANGEA network. The transaction has dedicated dispute outputs for each of the players, and the dealer. It also has an output with a timelock, which triggers a review. The transaction is reviewed by the players and broadcast to the PANGEA network.
+1. Player1 and Player2 jointly sign a transaction (**Fund**) on the KMD blockchain. The transaction includes a data output with **Params**. The transaction is reviewed by the dealer, and broadcast to the KMD network.
+1. Dealer creates a transaction (**Session**) on the PANGEA network. The transaction has dedicated dispute outputs for each of the players, and the dealer. It also has an output with a timelock, which triggers a review. The transaction is reviewed by the players and broadcast to the PANGEA network.
 1. Game is played privately between players using **PVM** (Poker Virtual Machine).
 
 #### Game Closing - Common case
 
 The quorum required to close the game consists of **n/2+1 players + dealer**. In a 2 player scenario that means both players plus the dealer.
 
-1. Player1, Player2, and Dealer all agree to sign transaction **PlayerPayout**, which spends the **Stake** according to the payout vector output of the **PVM**. The transaction is broadcast to the KMD network and no further action is required.
+1. Player1, Player2, and Dealer all agree to sign transaction **PlayerPayout**, which spends the **Fund** according to the payout vector output of the **PVM**. The transaction is broadcast to the KMD network and no further action is required.
 
 #### Game Closing - Timeout / Dispute
 
 In a 2 player scenario, any single actor may dispute the game and the network will evaluate the posted game states.
 
-1. A single actor, lets say Player1 decides it is neccesary to invoke an external judiciary entity, in this case the application blockchain. They create a transaction **GameState**, spending their dedicated output of **StartGame**. In a data output of this transaction, they attach the compressed output of the PVM, with signatures from all players.
+1. A single actor, lets say Player1 decides it is neccesary to invoke an external judiciary entity, in this case the application blockchain. They create a transaction **GameState**, spending their dedicated output of **Session**. In a data output of this transaction, they attach the compressed output of the PVM, with signatures from all players.
 1. Player2 and Dealer notice that Player1 has posted evidence. If they wish, they can also post **GameState** transactions. The evidence is simply a game state, which is the output of the **PVM**, signed by all players.
 1. Any player may create a transaction **TriggerReview**, which starts a countdown of a number of blocks, after which the game states will be evaluated. Participants have until this timeout to post their game states.
 1. When **TriggerReview** is accepted into the app chain, the game states will be evaluated on-chain using a call to **PVM**. **Notary** will take the payout vector is taken from the longest valid gamestate, and use it to compile transaction **NotaryPayout**. This transaction will then be broadcast to the KMD chain.
@@ -126,26 +126,26 @@ signEncode tx =
    in r
 main =
   let write path tx = C8L.writeFile path $ encodePretty tx
-   in do write "specs/txStake.json" stakeTx
-         write "specs/txStartGame.json" startGameTx
-         write "specs/txPlayerPayout.json" playerPayoutTx
-         write "specs/txClaimData.json" claimDataTx
-         write "specs/txResolveClaim.json" resolveClaimTx
-         write "specs/txPayoutClaim.json" payoutClaimTx
+   in do write "specs/vectors/txFund.json" stakeTx
+         write "specs/vectors/txSession.json" startGameTx
+         write "specs/vectors/txPlayerPayout.json" playerPayoutTx
+         write "specs/vectors/txPostClaim.json" claimDataTx
+         write "specs/vectors/txResolveClaim.json" resolveClaimTx
+         write "specs/vectors/txPayoutClaim.json" payoutClaimTx
 ```
 
-### Transaction: Stake
+### Transaction: Fund
 
-JSON: [txStake.json](./txStake.json)
+JSON: [txFund.json](./vectors/txFund.json)
 
-The **Stake** transaction is made on the KMD chain, and uses inputs from each player, and creates a single CryptoCondition output. The output may either be spent by a quorum of the participants (n/2+1 players + dealer), or by a subset of notaries.
+The **Fund** transaction is made on the KMD chain, and uses inputs from each player, and creates a single CryptoCondition output. The output may either be spent by a quorum of the participants (n/2+1 players + dealer), or by a subset of notaries.
 
 ```haskell
--- payout is either ImportPayoutVector or quorum
+-- payout is either ImportPayout or quorum
 quorumCond = Threshold 2 [ ecCond dealer
                          , Threshold 2 [ ecCond player1, ecCond player2 ] ]
 payoutCond = Threshold 1 [ quorumCond
-                         , Eval "ImportPayoutVector" (encode startGameTxid) ]
+                         , Eval "ImportPayout" (encode startGameTxid) ]
 
 stakeTx =
   let inputs =
@@ -163,11 +163,11 @@ stakeTxid = txHash $ signEncode stakeTx
 ```
 
 
-### Transaction: StartGame
+### Transaction: Session
 
-JSON: [txStartGame.json](./txStartGame.json)
+JSON: [txSession.json](./vectors/txSession.json)
 
-The **StartGame** transaction is made on the PANGEA chain, and contains the ID of the **Stake** transaction as a data output. The dealer is expected to hold the PANGEA units neccesary to make this transaction. The dealer also provides outputs that are sufficient for the players to post gamestates in the event of a dispute. An exec output is provided that will trigger an on-chain evaluation a subsequent payout; it includes a delay of a number of blocks before it can be triggered.
+The **Session** transaction is made on the PANGEA chain, and contains the ID of the **Fund** transaction as a data output. The dealer is expected to hold the PANGEA units neccesary to make this transaction. The dealer also provides outputs that are sufficient for the players to post gamestates in the event of a dispute. An exec output is provided that will trigger an on-chain evaluation a subsequent payout; it includes a delay of a number of blocks before it can be triggered.
 
 Note: Currently, this transaction may or may not be used; in the case that it is not used, it would be good to provide the dealer with a way to recollect the outputs, even though they maybe just amount to dust.
 
@@ -206,9 +206,9 @@ startGameTxid = txHash startGameTxEncoded
 
 ### Transaction: PlayerPayout
 
-JSON: [txPlayerPayout.json](./txPlayerPayout.json)
+JSON: [txPlayerPayout.json](./vectors/txPlayerPayout.json)
 
-The **PlayerPayout** transaction is made on the KMD chain. It is independent of the **StartGame** transaction. It distributes the stake according to a payout vector that is agreed upon by a majority of the players + the dealer.
+The **PlayerPayout** transaction is made on the KMD chain. It is independent of the **Session** transaction. It distributes the stake according to a payout vector that is agreed upon by a majority of the players + the dealer.
 
 ```haskell
 payouts = [addrOutput 50 dealer, addrOutput 950 player1]
@@ -219,11 +219,11 @@ playerPayoutTx = KTx
   payouts
 ```
 
-### Transaction: ClaimData
+### Transaction: PostClaim
 
-JSON: [txClaimData.json](./txClaimData.json)
+JSON: [txPostClaim.json](./vectors/txPostClaim.json)
 
-The **ClaimData** transaction is made on the PANGEA chain. It registers a game state for evaluation, in the case that **PlayerPayout** is not possible for some reason. Each player has the opportunity to perform a **ClaimData** by spending an output of the **StartGame** transaction.
+The **PostClaim** transaction is made on the PANGEA chain. It registers a game state for evaluation, in the case that **PlayerPayout** is not possible for some reason. Each player has the opportunity to perform a **PostClaim** by spending an output of the **Session** transaction.
 
 ```haskell
 claimDataTx = KTx
@@ -235,7 +235,7 @@ claimDataTx = KTx
 
 ### Transaction: ResolveClaim
 
-JSON: [txResolveClaim.json](./txResolveClaim.json)
+JSON: [txResolveClaim.json](./vectors/txResolveClaim.json)
 
 The **ResolveClaim** transaction posts a resolution of the claim. The resulution will be evaluated and the transaction will only be accepted if the claim is correct.
 
@@ -251,7 +251,7 @@ resolveClaimTx =
 
 ### Transaction: PayoutClaim
 
-JSON: [txPayoutClaim.json](./txPayoutClaim.json)
+JSON: [txPayoutClaim.json](./vectors/txPayoutClaim.json)
 
 The **PayoutClaim** transaction executes a payout vector with reference to a **ResolveClaim** transaction. Only one signature is required to execute it, but it requires the complete payload of the **ResolveClaim** transaction, plus notary proof of that transaction. Additionally, the **ResolveClaim** transaction must have the correct format:
 
@@ -347,26 +347,26 @@ Parameters:
 
 * Poker GameHeader, including: game ID, public keys of participants.
 * Winning output binary, via OP\_RETURN at output 0.
-* List of posted game states, inside OP\_RETURN 0 of spending transactions for each of the parent transaction (**StartGame**) outputs starting at output 1.
+* List of posted game states, inside OP\_RETURN 0 of spending transactions for each of the parent transaction (**Session**) outputs starting at output 1.
 
 Verifications:
 
 1. Valid states are ones that conform to the provided GameHeader 
 1. For each of the posted game states, that the longest valid state produces the exact same binary attached in OP\_RETURN output 0. This is equivalent to the "longest chain wins" rule.
 
-### Chain func: ImportPayoutVector
+### Chain func: ImportPayout
 
-ImportPayoutVector is a Crypto-Conditons eval method that is used to execute a payout vector from another chain. It is fulfilled by the **PayoutClaim** transaction on KMD chain.
+ImportPayout is a Crypto-Conditons eval method that is used to execute a payout vector from another chain. It is fulfilled by the **PayoutClaim** transaction on KMD chain.
 
 Parameters:
 
-* ID of **StartGame** transaction on PANGEA, via preimage.
+* ID of **Session** transaction on PANGEA, via preimage.
 * Complete body of **ResolveClaim** transaction on PANGEA, via OP\_RETURN at output 0.
 * **TxImportProof** notary proof, via OP\_RETURN at output 1.
 
 Verifications:
 
-1. That the output 0 of the StartGame transaction has been spent, by the attached ResolveClaim. This indicates that the attached payout vectors were verified by the app-chain eval function (VerifyPoker).
+1. That the output 0 of the Session transaction has been spent, by the attached ResolveClaim. This indicates that the attached payout vectors were verified by the app-chain eval function (VerifyPoker).
 1. That the notarisation ID included in the TxImportProof points to a transaction signed by notaries.
 1. That the TxImportProof is valid given the txid of the ResolveClaim transaction and the MOM from the notarisation.
 1. That the OP\_RETURN output of the attached ResolveClaim transaction is exactly equal to the outputs in PayoutClaim, not including the attachments (drop the attachments from the list of outputs of PayoutClaim).
@@ -385,8 +385,8 @@ getMOM txid = do
     assertNotaryTx = undefined
     getFirstDataOutput = undefined
 
---evalImportPayoutVector :: Tx -> TxImportProof -> IO Bool
---evalImportPayoutVector tx (notaryTxid, mb) = do
+--evalImportPayout :: Tx -> TxImportProof -> IO Bool
+--evalImportPayout tx (notaryTxid, mb) = do
 --  mom <- getMOM notartTxid
 --  pure $ verifyMerkleBranch
 

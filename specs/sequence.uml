@@ -8,28 +8,26 @@ database KMD
 actor Player1
 actor Player2
 
-== When players play by the rules ==
+== When players behave ==
+
+Dealer -> PANGEA: OpenSession
+activate PANGEA
+note left: Dealer creates a transaction on\napp chain to secure the payout
 
 Player1 -> KMD: Fund
 & Player2 -> KMD: \t
 activate KMD
 note right: Players create a transaction on\nvalue chain to fund the game
 
-
-Dealer -> PANGEA: OpenSession
-activate PANGEA
-note left: Dealer creates a transaction on\napp chain to secure the payout
-
-Player1 -> Dealer: exec
+Player1 -> Dealer: gameplay
 & Player2 -> Dealer: \t
 note right: Game is executed off chain
 
-Player1 -> KMD: Payout
-& Player2 -> KMD: Payout
+Player1 -> KMD: PlayerPayout
+& Player2 -> KMD: \t
 & Dealer -> KMD: \t
 note left: n/2+1 players plus dealer agree\non payout vector and close game
 deactivate KMD
-
 
 Dealer -> PANGEA: CloseSession
 deactivate PANGEA
@@ -37,30 +35,39 @@ note left: dealer closes session
 
 == When n/2 players time out ==
 
+Dealer -> PANGEA: OpenSession
+activate PANGEA
+note left: Dealer creates a transaction on\napp chain to secure the payout
+
 Player1 -> KMD: Fund
 & Player2 -> KMD: \t
 activate KMD
+note right: Players create a transaction on\nvalue chain to fund the game
 
-
-Dealer -> PANGEA: OpenSession
-activate PANGEA
-
-Player1 -> Dealer: exec
+Player1 -> Dealer: gameplay
 & Player2 -> Dealer: \t
+note right: Game is executed off chain
 
-Player1 -> PANGEA: Dispute
-note right: Player posts dispute with evidence
+Player1 -> PANGEA: PostClaim
+note right: Player posts claim data
 
-Player2 -> PANGEA: Dispute
-& Dealer -> PANGEA: Dispute
-note left: Everyone posts evidence
+Player2 -> PANGEA: PostClaim
+& Dealer -> PANGEA: PostClaim
+note left: Everyone posts claim data until\nResolveClaim LockTime releases
 
-PANGEA -> Notary: Payout vector
+Player1 -> PANGEA: ResolveClaim
+& Player2 -> PANGEA: ResolveClaim
+& Dealer -> PANGEA: ResolveClaim
+note left: Everyone posts claim resolution\nOnly correct resolution accepted
 deactivate PANGEA
-note left: Notary receives payout instruction
 
-Notary -> KMD: Payout vector
+Notary -> KMD: notarize
+
+Player1 -> KMD: ClaimPayout
+& Player2 -> KMD: ClaimPayout
+& Dealer -> KMD: ClaimPayout
+note left: Everyone posts 
+
 deactivate KMD
-note left: Notary posts payout instruction\nto value chain
 
 @enduml
