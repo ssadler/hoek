@@ -33,12 +33,12 @@
                 "condition": {
                     "subfulfillments": [
                         {
-                            "method": "nLockTime",
+                            "method": "LockTime",
                             "preimage": "c29tZSBudW1iZXIgb2YgYmxvY2tz",
                             "type": "eval-sha-256"
                         },
                         {
-                            "method": "verifyPoker",
+                            "method": "VerifyPoker",
                             "preimage": "",
                             "type": "eval-sha-256"
                         },

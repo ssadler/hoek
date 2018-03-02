@@ -88,15 +88,17 @@ Transactions in this section are using a format suitable for passing to Hoek to 
 
 ```haskell
 import Data.Aeson.Encode.Pretty
-import Data.Bits
-import Data.ByteString.Lazy.Char8 as C8L
+import Data.Bits hiding (Bits)
+import qualified Data.ByteString.Lazy.Char8 as C8L
 import Data.Serialize
 import Network.Komodo.CryptoConditions
 import Network.Komodo.Transaction
 import Network.Haskoin.Crypto as H
 import Network.Haskoin.Block.Merkle as H
 import Network.Haskoin.Crypto.Keys as H
+import Network.Haskoin.Network as H
 import Network.Haskoin.Transaction as H
+import Network.Haskoin.Util as H
 import Network.Komodo.Prelude
 dealer="025af7eed280ca8d1ebb294e9388378a2abf5455072c17bdf22506b6aa18dc8a24" :: H.PubKey
 player1="03c8a965089173d746144cd667c8cedf985460ecc155811bd729e461f0079222f7"
@@ -250,7 +252,7 @@ The **PayoutClaim** transaction executes a payout vector with reference to a **R
 payoutClaimTx =
   let (KTx _ [TxOutput _ (CarrierOutput payoutsBs)]) = resolveClaimTx
       txOutResolveClaim = TxOutput 0 $ CarrierOutput $ encode $ signEncode resolveClaimTx
-      txOutNotaryProof = TxOutput 0 $ CarrierOutput "proof"
+      txOutNotaryProof = TxOutput 0 $ CarrierOutput $ encode importProofExample
    in KTx
       [ TxInput (OutPoint stakeTxid 0) (ConditionInput payoutCond) ]
       ([ txOutResolveClaim , txOutNotaryProof ] ++ payouts)
@@ -265,30 +267,53 @@ App chains of this type will intermittently post notarisations to the value chai
 
 The MOM is simply a binary [Merkle Tree](https://en.wikipedia.org/wiki/Merkle_tree) where the leaf nodes are all the transaction merkle roots since the last notarisation, and up to and including the block currently being notarised.
 
-[SPV](https://bitcoin.org/en/glossary/simplified-payment-verification) protocol provides a merkle vector to verify that a transaction ID is contained in a block:
+[SPV](https://bitcoin.org/en/glossary/simplified-payment-verification) protocol provides a merkle branch to verify that a transaction ID is contained in a block:
 
-`txid -> merkle vector -> block merkle root`
+`txid -> merkle branch -> block merkle root`
 
-So in this case we concatenate the SPV merkle vector and the MOM merkle vector so it reaches all the way to the MOM:
+So in this case we concatenate the SPV merkle branch and the MOM merkle branch so it reaches all the way to the MOM:
 
-`txid -> merkle vector -> MOM`
+`txid -> merkle branch -> MOM`
 
-We're not really worried about if or when the block merkle root is encountered. Just that we can use the merkle vector to go from the txid to to the MOM. The merkle vector is a list of tuples, each containing a hash and whether or not the hash is a prefix (if not, it's a suffix):
+We're not really worried about if or when the block merkle root is encountered. Just that we can use the merkle branch to go from the txid to to the MOM. The merkle branch is a list of node hashes, plus a varint. The bits of the varint correspond to the hashes in the list, and specify whether the node is left or right.
 
 
 ```haskell
-type TxImportProof = (NotarisationTxHash, MerkleBranch)
-type NotarisationTxHash = TxHash
-type MerkleBranch = ([H.Hash256], Int)
-type MOM = H.Hash256
 
-execMerkleBranch :: MerkleBranch -> H.Hash256 -> H.Hash256
-execMerkleBranch ([],_) hashFrom = hashFrom
-execMerkleBranch (n:xs,p) hashFrom = execMerkleBranch (xs,shiftR p 1) $
-  (if testBit p 0 then id else flip) H.hash2 n hashFrom
+type Bits = Word64
 
-verifyMerkleBranch :: MerkleBranch -> TxHash -> MOM -> Bool
-verifyMerkleBranch mv txid mom = execMerkleBranch mv (getTxHash txid) == mom
+data TxImportProof = TxImportProof
+    { notarisationTxid :: TxHash
+    , merkleBranch :: [H.Hash256]
+    , merklePositions :: Bits
+    }
+
+instance Serialize TxImportProof where
+    put (TxImportProof ntxid nodes pos) = do
+        put ntxid
+        put $ H.VarInt $ fromIntegral $ length nodes
+        mapM put nodes
+        put $ H.VarInt pos
+    get =
+        let getNodes = do
+            VarInt n <- get
+            replicateM (fromIntegral n) get
+         in TxImportProof <$> get <*> getNodes <*> get
+
+
+importProofExample = TxImportProof
+    "0000000100010001010100000001000000000000000001010000010000000001"
+    (map H.hash256 ["", "0"::ByteString])
+    2
+
+execMerkleBranch :: [H.Hash256] -> Bits -> H.Hash256 -> H.Hash256
+execMerkleBranch [] _ h = h
+execMerkleBranch (n:xs) bits h = execMerkleBranch xs (shiftR bits 1) $
+  (if testBit bits 0 then id else flip) H.hash2 n h
+
+
+verifyMerkleBranch :: [H.Hash256] -> Bits -> TxHash -> MOM -> Bool
+verifyMerkleBranch nodes bits txid mom = execMerkleBranch nodes bits (getTxHash txid) == mom
 ```
 
 ### Chain func: LockTime
@@ -298,6 +323,8 @@ verifyMerkleBranch mv txid mom = execMerkleBranch mv (getTxHash txid) == mom
 ### Chain func: ImportPayoutVector
 
 ```haskell
+
+type MOM = H.Hash256
 getMOM :: TxHash -> IO MOM
 getMOM txid = do
   tx <- dbGetTx txid

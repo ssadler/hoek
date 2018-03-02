@@ -5,12 +5,12 @@
                 "fulfillment": {
                     "subfulfillments": [
                         {
-                            "method": "nLockTime",
+                            "method": "LockTime",
                             "preimage": "c29tZSBudW1iZXIgb2YgYmxvY2tz",
                             "type": "eval-sha-256"
                         },
                         {
-                            "method": "verifyPoker",
+                            "method": "VerifyPoker",
                             "preimage": "",
                             "type": "eval-sha-256"
                         },
@@ -38,7 +38,7 @@
                 }
             },
             "idx": 3,
-            "txid": "e8f77885232c3104ee6ba731233d920ec076661dcdedf1c0326baa60baa128c9"
+            "txid": "f0f205a5a63b706433b87df2d29c20a06c48c53d9df7e131a62a8754e29be15e"
         }
     ],
     "outputs": [
