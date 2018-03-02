@@ -1,4 +1,4 @@
-# Protocol for smart contracts using Crypto-Conditions
+# BET Protocol for custom contracts using Crypto-Conditions
 
 To facilitate participation in off-chain smart contracts on the [Komodo Platform](https://komodoplatform.com/en), providing a mechanism for dispute resolution.
 
@@ -11,7 +11,7 @@ To facilitate participation in off-chain smart contracts on the [Komodo Platform
    * [Transaction: PlayerPayout](#transaction-playerpayout)
    * [Transaction: PostClaim](#transaction-postclaim)
    * [Transaction: ResolveClaim](#transaction-resolveclaim)
-   * [Transaction: PayoutClaim](#transaction-payoutclaim)
+   * [Transaction: ClaimPayout](#transaction-payoutclaim)
    * [Notary proof format using MOM](#notary-proof-format-using-mom)
    * [Chain func: LockTime](#chain-func-locktime)
    * [Chain func: VerifyPoker](#chain-func-verifypoker)
@@ -19,15 +19,29 @@ To facilitate participation in off-chain smart contracts on the [Komodo Platform
 
 ## Introduction
 
-This section will introduce the relevant parts of the protocol, and the properties we want them to have.
-
 There are two blockchains, a blockchain providing a value token (**KMD**) and a blockchain providing an evaluation function (**PANGEA**). KMD and PANGEA may be used to refer to the ledger or the currency unit on the ledger, as is the case with Bitcoin.
 
 There are two or more **Players**, who own some KMD.
 
 There is a **Dealer**, who owns some PANGEA.
 
-The Players and the Dealer can be seen, more generally, as parties to a contract, who have different roles and interests.
+Each participant is identified by a public key and has a private key.
+
+This document illustrates by way of an executable Haskell script. See also [Bet.hs](./Bet.hs) for supporting code.
+
+```haskell
+import           Network.Komodo.Specs.Bet
+import qualified Network.Haskoin.Internals as H
+
+dealer  = "025af7eed280ca8d1ebb294e9388378a2abf5455072c17bdf22506b6aa18dc8a24"
+player1 = "03c8a965089173d746144cd667c8cedf985460ecc155811bd729e461f0079222f7"
+player2 = "03d6de78061ca1695ba068d15ecf4a5431de9dccce7b45a73bb996e7e596acdba7"
+
+privKeys = [ "UrsT8pXPH1WvfTkkRzP2JsLTB6ebqhH3n6p31UcXpgyoESB9wvPp" -- dealer
+           , "Up3VgThhFXFXG7QN5ykym2hkiBrfB76GNhehyUXNG7AJMdLoVPU7" -- player1
+           , "UpyycopsYkknBsPd5Y2BLzKrTYVnhKoFL59H49JWn6TqXmJKxER4" -- player2
+           ]
+```
 
 ### Properties
 
@@ -37,9 +51,9 @@ These are the properties that we want the solution to provide.
 * Only the Dealer needs to hold PANGEA. They may obtain this token via [atomic swap exchange](https://komodoplatform.com/en/barterdex).
 * No new domain specific evaluation functions in value chain KMD (but we may introduce general purpose functions).
 * Minimal data overhead in value chain KMD.
-* On-chain dispute resolution protocol for application specific evaluation.
+* On-chain dispute resolution protocol for impartial evaluation of states.
 
-## Smart Contract Workflow
+## Contract Security
 
 In an ideal world, in order to facilitate off chain smart contracts we could simply have the players fund an escrow transaction, do their off-chain processing, and submit an escrow release with an updated payout vector.
 
@@ -63,57 +77,9 @@ The below table illustrates:
 
 If you havn't already, this might be a good time to refer to the [transaction basics](./basics.md) document.
 
-Transactions in this section are using a format suitable for passing to Hoek to sign and encode.
+The basic idea is:
 
-```haskell
-import           Network.Komodo.Specs.Bet
-import qualified Network.Haskoin.Internals as H
-
-
-dealer  = "025af7eed280ca8d1ebb294e9388378a2abf5455072c17bdf22506b6aa18dc8a24"
-player1 = "03c8a965089173d746144cd667c8cedf985460ecc155811bd729e461f0079222f7"
-player2 = "03d6de78061ca1695ba068d15ecf4a5431de9dccce7b45a73bb996e7e596acdba7"
-
-
-privKeys = [ "UrsT8pXPH1WvfTkkRzP2JsLTB6ebqhH3n6p31UcXpgyoESB9wvPp" -- dealer
-           , "Up3VgThhFXFXG7QN5ykym2hkiBrfB76GNhehyUXNG7AJMdLoVPU7" -- player1
-           , "UpyycopsYkknBsPd5Y2BLzKrTYVnhKoFL59H49JWn6TqXmJKxER4" -- player2
-           ]
-```
-
-### Transaction: Fund
-
-JSON: [txFund.json](./vectors/txFund.json)
-
-The **Fund** transaction is made on the KMD chain, and uses inputs from each player, and creates a single CryptoCondition output. The output may either be spent by a quorum of the participants (n/2+1 players + dealer), or by a subset of notaries.
-
-```haskell
--- payout is either ImportPayout or quorum
-
-
-data Fund = Fund
-  { playerInputs :: [TxInput]
-  }
-quorumCond = Threshold 2 [ ecCond dealer
-                         , Threshold 2 [ ecCond player1, ecCond player2 ] ]
-payoutCond = Threshold 1 [ quorumCond
-                         , Eval "ImportPayout" (encode startGameTxid) ]
-
-fundTx =
-  let inputs =
-        -- players fund game
-        [ TxInput (OutPoint "ec851f0d887638016f5d6818a1ace0038abccdb502d2b0d661c97d853d089a65" 0) 
-                  (addressScript player1)
-        , TxInput (OutPoint "b66de6fc17844c0151c2cfb146435e466290f5aacefb5b3ac1f437a0c7b046d9" 0)
-                  (addressScript player2)
-        ]
-      fundAmount = 1000
-      outputs = [ TxOutput fundAmount $ CCOutput payoutCond ]
-   in KTx inputs outputs
-
-fundTxid = txHash $ signEncode privKeys fundTx
-```
-
+![txs.svg](./txs.svg)
 
 ### Transaction: Session
 
@@ -152,6 +118,40 @@ startGameTxEncoded :: H.Tx
 Right startGameTxEncoded =
   runExcept $ signTxSecp256k1 privKeys startGameTx >>= signTxBitcoin privKeys >>= encodeTx
 startGameTxid = txHash startGameTxEncoded
+```
+
+
+### Transaction: Fund
+
+JSON: [txFund.json](./vectors/txFund.json)
+
+The **Fund** transaction is made on the KMD chain, and uses inputs from each player, and creates a single CryptoCondition output. The output may either be spent by a quorum of the participants (n/2+1 players + dealer), or by a subset of notaries.
+
+```haskell
+-- payout is either ImportPayout or quorum
+
+
+data Fund = Fund
+  { playerInputs :: [TxInput]
+  }
+quorumCond = Threshold 2 [ ecCond dealer
+                         , Threshold 2 [ ecCond player1, ecCond player2 ] ]
+payoutCond = Threshold 1 [ quorumCond
+                         , Eval "ImportPayout" (encode startGameTxid) ]
+
+fundTx =
+  let inputs =
+        -- players fund game
+        [ TxInput (OutPoint "ec851f0d887638016f5d6818a1ace0038abccdb502d2b0d661c97d853d089a65" 0) 
+                  (addressScript player1)
+        , TxInput (OutPoint "b66de6fc17844c0151c2cfb146435e466290f5aacefb5b3ac1f437a0c7b046d9" 0)
+                  (addressScript player2)
+        ]
+      fundAmount = 1000
+      outputs = [ TxOutput fundAmount $ CCOutput payoutCond ]
+   in KTx inputs outputs
+
+fundTxid = txHash $ signEncode privKeys fundTx
 ```
 
 ### Transaction: PlayerPayout
@@ -199,11 +199,11 @@ resolveClaimTx =
 ```
 
 
-### Transaction: PayoutClaim
+### Transaction: ClaimPayout
 
-JSON: [txPayoutClaim.json](./vectors/txPayoutClaim.json)
+JSON: [txClaimPayout.json](./vectors/txClaimPayout.json)
 
-The **PayoutClaim** transaction executes a payout vector with reference to a **ResolveClaim** transaction. Only one signature is required to execute it, but it requires the complete payload of the **ResolveClaim** transaction, plus notary proof of that transaction. Additionally, the **ResolveClaim** transaction must have the correct format:
+The **ClaimPayout** transaction executes a payout vector with reference to a **ResolveClaim** transaction. Only one signature is required to execute it, but it requires the complete payload of the **ResolveClaim** transaction, plus notary proof of that transaction. Additionally, the **ResolveClaim** transaction must have the correct format:
 
 1. The first output must contain the **ResolveClaim** raw transaction.
 1. The second output must contain cryptographic proof of notarisation in the PANGEA chain of that transaction.
@@ -296,7 +296,7 @@ Verifications:
 
 ### Chain func: ImportPayout
 
-ImportPayout is a Crypto-Conditons eval method that is used to execute a payout vector from another chain. It is fulfilled by the **PayoutClaim** transaction on KMD chain.
+ImportPayout is a Crypto-Conditons eval method that is used to execute a payout vector from another chain. It is fulfilled by the **ClaimPayout** transaction on KMD chain.
 
 Parameters:
 
@@ -309,7 +309,7 @@ Verifications:
 1. That the output 0 of the Session transaction has been spent, by the attached ResolveClaim. This indicates that the attached payout vectors were verified by the app-chain eval function (VerifyPoker).
 1. That the notarisation ID included in the TxImportProof points to a transaction signed by notaries.
 1. That the TxImportProof is valid given the txid of the ResolveClaim transaction and the MOM from the notarisation.
-1. That the OP\_RETURN output of the attached ResolveClaim transaction is exactly equal to the outputs in PayoutClaim, not including the attachments (drop the attachments from the list of outputs of PayoutClaim).
+1. That the OP\_RETURN output of the attached ResolveClaim transaction is exactly equal to the outputs in ClaimPayout, not including the attachments (drop the attachments from the list of outputs of ClaimPayout).
 
 
 ```haskell
@@ -337,6 +337,6 @@ main = do
    writePrettyJson "specs/vectors/txPlayerPayout.json" playerPayoutTx
    writePrettyJson "specs/vectors/txPostClaim.json" claimDataTx
    writePrettyJson "specs/vectors/txResolveClaim.json" resolveClaimTx
-   writePrettyJson "specs/vectors/txPayoutClaim.json" payoutClaimTx
+   writePrettyJson "specs/vectors/txClaimPayout.json" payoutClaimTx
 
 ```

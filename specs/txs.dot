@@ -1,0 +1,13 @@
+digraph Txs {
+    node [shape=hexagon]
+    Session -> Fund [style=dotted, xlabel="(soft dependency)"]
+    Fund -> PlayerPayout [xlabel="(happy path)"]
+    edge [color=purple]
+    Fund -> ClaimPayout
+    Session -> PostClaim
+    Session -> ResolveClaim
+    ResolveClaim -> ClaimPayout [style=dotted]
+    PostClaim -> ResolveClaim [style=dotted]
+    Fund -> PostClaim [color=white]
+    {rank = same; ClaimPayout; PlayerPayout; }
+}
