@@ -10,7 +10,7 @@ To facilitate participation in off-chain smart contracts on the [Komodo Platform
       * [Game Closing - Common case](#game-closing---common-case)
       * [Game Closing - Timeout / Dispute](#game-closing---timeout--dispute)
 * [Transactions](#transactions)
-   * [Transaction: Fund](#transaction-stake)
+   * [Transaction: Fund](#transaction-fund)
    * [Transaction: Session](#transaction-startgame)
    * [Transaction: PlayerPayout](#transaction-playerpayout)
    * [Transaction: PostClaim](#transaction-claimdata)
@@ -102,28 +102,15 @@ import           Network.Komodo.Specs.Bet
 import qualified Network.Haskoin.Internals as H
 
 
-dealer="025af7eed280ca8d1ebb294e9388378a2abf5455072c17bdf22506b6aa18dc8a24" :: H.PubKey
-player1="03c8a965089173d746144cd667c8cedf985460ecc155811bd729e461f0079222f7"
-player2="03d6de78061ca1695ba068d15ecf4a5431de9dccce7b45a73bb996e7e596acdba7"
+dealer  = "025af7eed280ca8d1ebb294e9388378a2abf5455072c17bdf22506b6aa18dc8a24"
+player1 = "03c8a965089173d746144cd667c8cedf985460ecc155811bd729e461f0079222f7"
+player2 = "03d6de78061ca1695ba068d15ecf4a5431de9dccce7b45a73bb996e7e596acdba7"
+
 
 privKeys = [ "UrsT8pXPH1WvfTkkRzP2JsLTB6ebqhH3n6p31UcXpgyoESB9wvPp" -- dealer
            , "Up3VgThhFXFXG7QN5ykym2hkiBrfB76GNhehyUXNG7AJMdLoVPU7" -- player1
            , "UpyycopsYkknBsPd5Y2BLzKrTYVnhKoFL59H49JWn6TqXmJKxER4" -- player2
            ]
-
-
-signEncode tx = 
-  let Right r = runExcept $ signTxSecp256k1 privKeys tx >>= signTxBitcoin privKeys >>= encodeTx
-   in r
-
-
-main = do
-   writePrettyJson "specs/vectors/txFund.json" stakeTx
-   writePrettyJson "specs/vectors/txSession.json" startGameTx
-   writePrettyJson "specs/vectors/txPlayerPayout.json" playerPayoutTx
-   writePrettyJson "specs/vectors/txPostClaim.json" claimDataTx
-   writePrettyJson "specs/vectors/txResolveClaim.json" resolveClaimTx
-   writePrettyJson "specs/vectors/txPayoutClaim.json" payoutClaimTx
 ```
 
 ### Transaction: Fund
@@ -144,7 +131,7 @@ quorumCond = Threshold 2 [ ecCond dealer
 payoutCond = Threshold 1 [ quorumCond
                          , Eval "ImportPayout" (encode startGameTxid) ]
 
-stakeTx =
+fundTx =
   let inputs =
         -- players fund game
         [ TxInput (OutPoint "ec851f0d887638016f5d6818a1ace0038abccdb502d2b0d661c97d853d089a65" 0) 
@@ -152,11 +139,11 @@ stakeTx =
         , TxInput (OutPoint "b66de6fc17844c0151c2cfb146435e466290f5aacefb5b3ac1f437a0c7b046d9" 0)
                   (addressScript player2)
         ]
-      stakeAmount = 1000
-      outputs = [ TxOutput stakeAmount $ CCOutput payoutCond ]
+      fundAmount = 1000
+      outputs = [ TxOutput fundAmount $ CCOutput payoutCond ]
    in KTx inputs outputs
 
-stakeTxid = txHash $ signEncode stakeTx
+fundTxid = txHash $ signEncode privKeys fundTx
 ```
 
 
@@ -203,13 +190,13 @@ startGameTxid = txHash startGameTxEncoded
 
 JSON: [txPlayerPayout.json](./vectors/txPlayerPayout.json)
 
-The **PlayerPayout** transaction is made on the KMD chain. It is independent of the **Session** transaction. It distributes the stake according to a payout vector that is agreed upon by a majority of the players + the dealer.
+The **PlayerPayout** transaction is made on the KMD chain. It is independent of the **Session** transaction. It distributes the fund according to a payout vector that is agreed upon by a majority of the players + the dealer.
 
 ```haskell
 payouts = [addressOutput 50 dealer, addressOutput 950 player1]
 playerPayoutTx = KTx
-  -- Spending the stake
-  [ TxInput (OutPoint stakeTxid 0) $ ConditionInput payoutCond ]
+  -- Spending the fund
+  [ TxInput (OutPoint fundTxid 0) $ ConditionInput payoutCond ]
   -- Payout each participant
   payouts
 ```
@@ -257,10 +244,10 @@ The **PayoutClaim** transaction executes a payout vector with reference to a **R
 ```haskell
 payoutClaimTx =
   let (KTx _ [TxOutput _ (CarrierOutput payoutsBs)]) = resolveClaimTx
-      txOutResolveClaim = TxOutput 0 $ CarrierOutput $ encode $ signEncode resolveClaimTx
+      txOutResolveClaim = TxOutput 0 $ CarrierOutput $ encode $ signEncode privKeys resolveClaimTx
       txOutNotaryProof = TxOutput 0 $ CarrierOutput $ encode importProofExample
    in KTx
-      [ TxInput (OutPoint stakeTxid 0) (ConditionInput payoutCond) ]
+      [ TxInput (OutPoint fundTxid 0) (ConditionInput payoutCond) ]
       ([ txOutResolveClaim , txOutNotaryProof ] ++ payouts)
 
 ```
@@ -308,7 +295,7 @@ instance Serialize TxImportProof where
 importProofExample = TxImportProof
     "0000000100010001010100000001000000000000000001010000010000000001" -- TxId of notarisation
     (map H.hash256 ["", "0"::ByteString])                              -- Two merkle nodes
-    2                                                                  -- left, right
+    2                                                                  -- False, True
 
 ```
 
@@ -374,5 +361,14 @@ getMOM txid = do
 --evalImportPayout tx (notaryTxid, mb) = do
 --  mom <- getMOM notartTxid
 --  pure $ verifyMerkleBranch
+
+
+main = do
+   writePrettyJson "specs/vectors/txFund.json" fundTx
+   writePrettyJson "specs/vectors/txSession.json" startGameTx
+   writePrettyJson "specs/vectors/txPlayerPayout.json" playerPayoutTx
+   writePrettyJson "specs/vectors/txPostClaim.json" claimDataTx
+   writePrettyJson "specs/vectors/txResolveClaim.json" resolveClaimTx
+   writePrettyJson "specs/vectors/txPayoutClaim.json" payoutClaimTx
 
 ```

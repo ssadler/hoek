@@ -3,6 +3,7 @@ module Network.Komodo.Specs.Bet
   , addressScript
   , addressOutput
   , ecCond
+  , signEncode
   , writePrettyJson
   ) where
 
@@ -12,9 +13,9 @@ import           Data.Bits hiding (Bits)
 import qualified Data.ByteString.Lazy.Char8 as C8L
 import           Data.Serialize as X
 import           Network.Komodo.CryptoConditions as X
+import           Network.Komodo.Prelude as X
 import           Network.Komodo.Transaction as X
 import qualified Network.Haskoin.Internals as H
-import           Network.Komodo.Prelude as X
 
 
 execMerkleBranch :: [H.Hash256] -> Int -> H.Hash256 -> H.Hash256
@@ -44,3 +45,9 @@ addressScript = AddressInput . H.pubKeyAddr
 
 addressOutput :: Amount -> H.PubKey -> TxOutput
 addressOutput n = TxOutput n . AddressOutput . H.pubKeyAddr
+
+
+signEncode :: [H.PrvKey] -> KTx -> H.Tx
+signEncode keys tx = 
+  let Right r = runExcept $ signTxSecp256k1 keys tx >>= signTxBitcoin keys >>= encodeTx
+   in r
