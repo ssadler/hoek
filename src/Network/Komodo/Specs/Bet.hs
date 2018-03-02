@@ -1,3 +1,5 @@
+{-# LANGUAGE OverloadedStrings #-}
+
 module Network.Komodo.Specs.Bet
   ( module X
   , addressScript
@@ -8,9 +10,10 @@ module Network.Komodo.Specs.Bet
   ) where
 
 import           Data.Aeson (ToJSON)
-import           Data.Aeson.Encode.Pretty as X (encodePretty)
+import           Data.Aeson.Encode.Pretty
 import           Data.Bits hiding (Bits)
 import qualified Data.ByteString.Lazy.Char8 as C8L
+import           Data.Ord (comparing)
 import           Data.Serialize as X
 import           Network.Komodo.CryptoConditions as X
 import           Network.Komodo.Prelude as X
@@ -32,7 +35,13 @@ merkleRoot hs  = H.hash2 (merkleRoot left) (merkleRoot right)
 
 
 writePrettyJson :: ToJSON a => FilePath -> a -> IO ()
-writePrettyJson path = C8L.writeFile path . encodePretty
+writePrettyJson path = C8L.writeFile path . encodePretty' conf
+  where conf = defConfig { confCompare = comparing cmp }
+        cmp "type" = "\0"
+        cmp "amount" = "\0"
+        cmp "subfulfillments" = "x"
+        cmp "script" = "x"
+        cmp k = k
 
 
 ecCond :: H.PubKey -> Condition

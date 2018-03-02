@@ -1,11 +1,11 @@
 {
     "inputs": [
         {
+            "idx": 1,
+            "txid": "f0f205a5a63b706433b87df2d29c20a06c48c53d9df7e131a62a8754e29be15e",
             "script": {
                 "address": "RKabR4HsmVU9bKConjm3aGsUfUXrVwDszc"
-            },
-            "idx": 1,
-            "txid": "f0f205a5a63b706433b87df2d29c20a06c48c53d9df7e131a62a8754e29be15e"
+            }
         }
     ],
     "outputs": [

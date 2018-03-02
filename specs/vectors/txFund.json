@@ -1,18 +1,18 @@
 {
     "inputs": [
         {
+            "idx": 0,
+            "txid": "ec851f0d887638016f5d6818a1ace0038abccdb502d2b0d661c97d853d089a65",
             "script": {
                 "address": "RKabR4HsmVU9bKConjm3aGsUfUXrVwDszc"
-            },
-            "idx": 0,
-            "txid": "ec851f0d887638016f5d6818a1ace0038abccdb502d2b0d661c97d853d089a65"
+            }
         },
         {
+            "idx": 0,
+            "txid": "b66de6fc17844c0151c2cfb146435e466290f5aacefb5b3ac1f437a0c7b046d9",
             "script": {
                 "address": "RCGyMKx6Lyhpfp4AC4xXbABJu8VXoE7aoh"
-            },
-            "idx": 0,
-            "txid": "b66de6fc17844c0151c2cfb146435e466290f5aacefb5b3ac1f437a0c7b046d9"
+            }
         }
     ],
     "outputs": [
@@ -20,39 +20,39 @@
             "amount": 1000,
             "script": {
                 "condition": {
+                    "type": "threshold-sha-256",
+                    "threshold": 1,
                     "subfulfillments": [
                         {
+                            "type": "threshold-sha-256",
+                            "threshold": 2,
                             "subfulfillments": [
                                 {
-                                    "publicKey": "025af7eed280ca8d1ebb294e9388378a2abf5455072c17bdf22506b6aa18dc8a24",
-                                    "type": "secp256k1-sha-256"
+                                    "type": "secp256k1-sha-256",
+                                    "publicKey": "025af7eed280ca8d1ebb294e9388378a2abf5455072c17bdf22506b6aa18dc8a24"
                                 },
                                 {
+                                    "type": "threshold-sha-256",
+                                    "threshold": 2,
                                     "subfulfillments": [
                                         {
-                                            "publicKey": "03c8a965089173d746144cd667c8cedf985460ecc155811bd729e461f0079222f7",
-                                            "type": "secp256k1-sha-256"
+                                            "type": "secp256k1-sha-256",
+                                            "publicKey": "03c8a965089173d746144cd667c8cedf985460ecc155811bd729e461f0079222f7"
                                         },
                                         {
-                                            "publicKey": "03d6de78061ca1695ba068d15ecf4a5431de9dccce7b45a73bb996e7e596acdba7",
-                                            "type": "secp256k1-sha-256"
+                                            "type": "secp256k1-sha-256",
+                                            "publicKey": "03d6de78061ca1695ba068d15ecf4a5431de9dccce7b45a73bb996e7e596acdba7"
                                         }
-                                    ],
-                                    "threshold": 2,
-                                    "type": "threshold-sha-256"
+                                    ]
                                 }
-                            ],
-                            "threshold": 2,
-                            "type": "threshold-sha-256"
+                            ]
                         },
                         {
+                            "type": "eval-sha-256",
                             "method": "ImportPayout",
-                            "preimage": "XuGb4lSHKqYx4fedPcVIbKAgnNLyfbgzZHA7pqUF8vA",
-                            "type": "eval-sha-256"
+                            "preimage": "XuGb4lSHKqYx4fedPcVIbKAgnNLyfbgzZHA7pqUF8vA"
                         }
-                    ],
-                    "threshold": 1,
-                    "type": "threshold-sha-256"
+                    ]
                 }
             }
         }
