@@ -44,6 +44,18 @@
     ],
     "outputs": [
         {
+            "amount": 0,
+            "script": {
+                "return": "AQAAAAHVuv9gXnKDeJjGpKV4Xa3DGHFfyq3hs6dosiENtZR94AMAAAD9/wBM/aKB+qCB9a8igAluTG9ja1RpbWWBFXNvbWUgbnVtYmVyIG9mIGJsb2Nrc68PgAt2ZXJpZnlQb2tlcoEAooG9oGelZYAhAlr37tKAyo0euylOk4g3iiq/VFUHLBe98iUGtqoY3IokgUC/iDULdAgaL/tWhqnye+Z2mhAZ62HyOkPuYhzr//dqoQfS3RAPpJ+uJeSOuL2+zBmlNGEqgo0C5kQfYtMNooBioVKlJ4AgUKkXjcLVF3OC6ehr4mE++mLZjXi3RARQS0WaE0/WusaBAwIAAKUngCDomCMlqBSBf0MOcOKyx3WRcDIjLC9pJtrt2FBm6mDQL4EDAgAAoQAAAAAAAQAAAAAAAAAAT2pMTAAAAAAAAAACMgAAAAAAAAAZdqkUIBhopjN1v+3xIcC0cJjbuJPH7uKIrLYDAAAAAAAAGXapFHD7z1Oicr9rtNvMTOFj92efeMUuiKwAAAAA"
+            }
+        },
+        {
+            "amount": 0,
+            "script": {
+                "return": "cHJvb2Y="
+            }
+        },
+        {
             "amount": 50,
             "script": {
                 "address": "RCCtwc9bgpgUGBsJ3g4T2s3W6qpLg1WJ6x"

@@ -106,6 +106,9 @@ privKeys = [ "UrsT8pXPH1WvfTkkRzP2JsLTB6ebqhH3n6p31UcXpgyoESB9wvPp" -- dealer
            , "Up3VgThhFXFXG7QN5ykym2hkiBrfB76GNhehyUXNG7AJMdLoVPU7" -- player1
            , "UpyycopsYkknBsPd5Y2BLzKrTYVnhKoFL59H49JWn6TqXmJKxER4" -- player2
            ]
+signEncode tx = 
+  let Right r = runExcept $ signTxSecp256k1 privKeys tx >>= signTxBitcoin privKeys >>= encodeTx
+   in r
 main =
   let write path tx = C8L.writeFile path $ encodePretty tx
    in do write "specs/txStake.json" stakeTx
@@ -113,6 +116,7 @@ main =
          write "specs/txPlayerPayout.json" playerPayoutTx
          write "specs/txClaimData.json" claimDataTx
          write "specs/txResolveClaim.json" resolveClaimTx
+         write "specs/txPayoutClaim.json" payoutClaimTx
 ```
 
 ### Transaction: Stake
@@ -123,13 +127,11 @@ The **Stake** transaction is made on the KMD chain, and uses inputs from each pl
 
 ```haskell
 -- payout is either made by notaries, or dealer + quorum of players
-payoutCond :: Condition
 payoutCond = Threshold 1 [ Eval "subsetNotarySigs" ""
                          , Threshold 2 [ ecCond dealer
                                        , Threshold 2 [ ecCond player1
                                                      , ecCond player2 ] ] ]
 
-stakeTx :: KTx
 stakeTx =
   let inputs =
         -- players fund game
@@ -142,10 +144,7 @@ stakeTx =
       outputs = [ TxOutput stakeAmount $ CCOutput payoutCond ]
    in KTx inputs outputs
 
-stakeTxEncoded :: H.Tx
-Right stakeTxEncoded =
-  runExcept $ signTxSecp256k1 privKeys stakeTx >>= signTxBitcoin privKeys >>= encodeTx
-stakeTxid = txHash stakeTxEncoded
+stakeTxid = txHash $ signEncode stakeTx
 ```
 
 
@@ -199,14 +198,12 @@ JSON: [txPlayerPayout.json](./txPlayerPayout.json)
 The **PlayerPayout** transaction is made on the KMD chain. It is independent of the **StartGame** transaction. It distributes the stake according to a payout vector that is agreed upon by a majority of the players + the dealer.
 
 ```haskell
+payouts = [addrOutput 50 dealer, addrOutput 950 player1]
 playerPayoutTx = KTx
   -- Spending the stake
   [ TxInput (OutPoint stakeTxid 0) $ ConditionInput payoutCond ]
   -- Payout each participant
-  [ addrOutput 50 dealer
-  , addrOutput 950 player1
-  , addrOutput 1 player2
-  ]
+  payouts
 ```
 
 ### Transaction: ClaimData
@@ -230,16 +227,35 @@ JSON: [txResolveClaim.json](./txResolveClaim.json)
 The **ResolveClaim** transaction posts a resolution of the claim. The resulution will be evaluated and the transaction will only be accepted if the claim is correct.
 
 ```haskell
-gameIdx = "the id of the game" :: String
 resolveClaimTx =
   let claimIdx = 3 -- zero indexed n participants plus one
-      payout = (gameIdx, [(dealer, 50), (player1, 950), (player2, 0::Amount)])
+      payoutsBin = encode $ toHaskoinOutput <$> payouts
    in KTx
       [ TxInput (OutPoint startGameTxid claimIdx) (ConditionInput evalClaimCond) ]
-      [ TxOutput 0 (CarrierOutput $ encode payout) ]
-
+      [ TxOutput 0 (CarrierOutput payoutsBin) ]
 ```
 
+
+### Transaction: PayoutClaim
+
+JSON: [txPayoutClaim.json](./txPayoutClaim.json)
+
+The **PayoutClaim** transaction executes a payout vector with reference to a **ResolveClaim** transaction. Only one signature is required to execute it, but it requires the complete payload of the **ResolveClaim** transaction, plus notary proof of that transaction. Additionally, the **ResolveClaim** transaction must have the correct format:
+
+1. The first output must contain the **ResolveClaim** raw transaction.
+1. The second output must contain cryptographic proof of notarisation in the PANGEA chain of that transaction.
+1. The last outputs must be a byte for byte copy of the OP\_RETURN data in **ResolveClaim**.
+
+```haskell
+payoutClaimTx =
+  let (KTx _ [TxOutput _ (CarrierOutput payoutsBs)]) = resolveClaimTx
+   in KTx
+      [ TxInput (OutPoint stakeTxid 0) $ ConditionInput payoutCond ]
+      ([ TxOutput 0 (CarrierOutput $ encode $ signEncode resolveClaimTx)
+       , TxOutput 0 (CarrierOutput "proof")
+       ] ++ payouts)
+
+```
 
 ### Questions
 

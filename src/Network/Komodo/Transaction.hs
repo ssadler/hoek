@@ -8,6 +8,10 @@ module Network.Komodo.Transaction
   , signTxEd25519
   , signTxSecp256k1
   , signTxBitcoin
+  , fromHaskoinInput
+  , fromHaskoinOutput
+  , toHaskoinInput
+  , toHaskoinOutput
   ) where
 
 import qualified Data.Aeson as Ae
