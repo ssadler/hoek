@@ -1,4 +1,4 @@
 [submodule "ext/haskoin"]
-	path = ext/haskoin
+	path = haskoin
 	url = https://github.com/libscott/haskoin/
 	branch = hoek

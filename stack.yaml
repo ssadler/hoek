@@ -20,8 +20,8 @@ resolver: lts-10.1
 # will not be run. This is useful for tweaking upstream packages.
 packages:
 - .
-- ./ext/komodo-base
-- ./ext/haskoin/haskoin-core
+- ./komodo-base
+- ./haskoin/haskoin-core
 
 # Dependency packages to be pulled from upstream that are not in the resolver
 # (e.g., acme-missiles-0.3)
