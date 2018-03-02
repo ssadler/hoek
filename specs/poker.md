@@ -302,9 +302,9 @@ instance Serialize TxImportProof where
 
 
 importProofExample = TxImportProof
-    "0000000100010001010100000001000000000000000001010000010000000001"
-    (map H.hash256 ["", "0"::ByteString])
-    2
+    "0000000100010001010100000001000000000000000001010000010000000001" -- TxId of notarisation
+    (map H.hash256 ["", "0"::ByteString])                              -- Two merkle nodes
+    2                                                                  -- left, right
 
 execMerkleBranch :: [H.Hash256] -> Bits -> H.Hash256 -> H.Hash256
 execMerkleBranch [] _ h = h
@@ -321,6 +321,22 @@ verifyMerkleBranch nodes bits txid mom = execMerkleBranch nodes bits (getTxHash 
 ### Chain func: VerifyPoker
 
 ### Chain func: ImportPayoutVector
+
+ImportPayoutVector is a Crypto-Conditons eval method that is used to execute a payout vector from another chain. It is fulfilled by the **PayoutClaim** transaction on KMD chain.
+
+Parameters:
+
+* ID of **StartGame** transaction on PANGEA, via preimage.
+* Complete body of **ResolveClaim** transaction on PANGEA, via OP\_RETURN in output 0.
+* **TxImportProof** notary proof, via OP\_RETURN in output 1.
+
+Verifications:
+
+1. That the output 0 of the StartGame transaction has been spent, by the attached ResolveClaim. This indicates that the attached payout vectors were verified by the app-chain eval function (VerifyPoker).
+1. That the notarisation ID included in the TxImportProof points to a transaction signed by notaries.
+1. That the TxImportProof is valid given the txid of the ResolveClaim transaction and the MOM from the notarisation.
+1. That the OP\_RETURN output of the attached ResolveClaim transaction is exactly equal to the outputs in PayoutClaim, not including the attachments (drop the attachments from the list of outputs of PayoutClaim).
+
 
 ```haskell
 
