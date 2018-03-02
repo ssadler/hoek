@@ -2,13 +2,24 @@
 
 To facilitate participation in off-chain smart contracts on the [Komodo Platform](https://komodoplatform.com/en), providing a mechanism for dispute resolution.
 
-1. [Introduction](#introduction)
-1. [Off chain contract security](#off-chain-contract-security)
-1. [Blockchain Poker](#blockchain-poker)
-1. [Transactions](#transactions)
-    1. [Stake](#transaction-stake)
-    1. [StartGame](#transaction-startgame)
-    1. [PlayerPayout](#transaction-playerpayout)
+* [Introduction](#introduction)
+   * [Properties](#properties)
+* [Smart Contract Workflow](#smart-contract-workflow)
+   * [Blockchain Poker](#blockchain-poker)
+      * [Game Opening](#game-opening)
+      * [Game Closing - Common case](#game-closing---common-case)
+      * [Game Closing - Timeout / Dispute](#game-closing---timeout--dispute)
+* [Transactions](#transactions)
+   * [Transaction: Stake](#transaction-stake)
+   * [Transaction: StartGame](#transaction-startgame)
+   * [Transaction: PlayerPayout](#transaction-playerpayout)
+   * [Transaction: ClaimData](#transaction-claimdata)
+   * [Transaction: ResolveClaim](#transaction-resolveclaim)
+   * [Transaction: PayoutClaim](#transaction-payoutclaim)
+   * [Notary proof format using MOM](#notary-proof-format-using-mom)
+   * [Chain func: LockTime](#chain-func-locktime)
+   * [Chain func: VerifyPoker](#chain-func-verifypoker)
+   * [Chain func: ImportPayoutVector](#chain-func-importpayoutvector)
 
 ## Introduction
 
@@ -322,7 +333,7 @@ LockTime is a Crypto-Conditions eval method that specifies an interval in blocks
 
 Parameters:
 
-* `nBlocks`: Number of blocks encoded as a VarInt.
+* `nBlocks`: Number of blocks encoded as a VarInt, via preimage.
 
 Verifications:
 
