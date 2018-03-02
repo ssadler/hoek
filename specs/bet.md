@@ -61,35 +61,7 @@ The below table illustrates:
 | 3         | 2                 | 2                      |
 | 4         | 3                 | 2                      |
 
-### Blockchain Poker
-
 ![BET sequence diagram](./sequence.svg)
-
-Let there be actors: **Dealer**, **Player1**, **Player2**. Each has a public and a private key. Addionally, **Notary** is an oracle backed by a collection of network node operators.
-
-#### Game Opening
-
-1. Player1 and Player2 locate and connect to Dealer. That is outside the scope of this document.
-1. The game has a **Params**, for example, the game ID and the dealer's commission.
-1. Player1 and Player2 jointly sign a transaction (**Fund**) on the KMD blockchain. The transaction includes a data output with **Params**. The transaction is reviewed by the dealer, and broadcast to the KMD network.
-1. Dealer creates a transaction (**Session**) on the PANGEA network. The transaction has dedicated dispute outputs for each of the players, and the dealer. It also has an output with a timelock, which triggers a review. The transaction is reviewed by the players and broadcast to the PANGEA network.
-1. Game is played privately between players using **PVM** (Poker Virtual Machine).
-
-#### Game Closing - Common case
-
-The quorum required to close the game consists of **n/2+1 players + dealer**. In a 2 player scenario that means both players plus the dealer.
-
-1. Player1, Player2, and Dealer all agree to sign transaction **PlayerPayout**, which spends the **Fund** according to the payout vector output of the **PVM**. The transaction is broadcast to the KMD network and no further action is required.
-
-#### Game Closing - Timeout / Dispute
-
-In a 2 player scenario, any single actor may dispute the game and the network will evaluate the posted game states.
-
-1. A single actor, lets say Player1 decides it is neccesary to invoke an external judiciary entity, in this case the application blockchain. They create a transaction **GameState**, spending their dedicated output of **Session**. In a data output of this transaction, they attach the compressed output of the PVM, with signatures from all players.
-1. Player2 and Dealer notice that Player1 has posted evidence. If they wish, they can also post **GameState** transactions. The evidence is simply a game state, which is the output of the **PVM**, signed by all players.
-1. Any player may create a transaction **TriggerReview**, which starts a countdown of a number of blocks, after which the game states will be evaluated. Participants have until this timeout to post their game states.
-1. When **TriggerReview** is accepted into the app chain, the game states will be evaluated on-chain using a call to **PVM**. **Notary** will take the payout vector is taken from the longest valid gamestate, and use it to compile transaction **NotaryPayout**. This transaction will then be broadcast to the KMD chain.
-
 
 ## Transactions
 
