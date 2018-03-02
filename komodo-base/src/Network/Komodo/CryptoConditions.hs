@@ -8,6 +8,8 @@ module Network.Komodo.CryptoConditions
   , parsePolyFulfillment
   , fulfillEd25519
   , fulfillSecp256k1
+  , ed25519Condition
+  , preimageCondition
   ) where
 
 import           Control.Monad.Trans.Except

@@ -35,12 +35,9 @@ standardTests = testGroup "testStandard"
       let subcond = Threshold 2 [ed2Alice, preimageCondition "a", ed2Eve]
        in Threshold 2 [ed2BobF, subcond]
 
-  , testFulfill "Test prefixed" $
-      Prefix "a" 20 ed2Alice
-  
   , testCase "Test read fulfillment empty signatures" $
-      let (Just ffillBin) = getFulfillment ed2Alice
-          (Right cond') = readFulfillment ffillBin
+      let (Just ffillBin) = encodeFulfillment ed2Alice
+          (Right cond') = decodeFulfillment ffillBin
        in assertEqual "Can decode unfulfilled fulfillment" ed2Alice cond'
 
   ]
@@ -53,12 +50,13 @@ testFulfill name cond = testCase name $ do
   let msg = umsg
       uri = getConditionURI cond
       badFfill = fulfillEd25519 pkAlice skEve umsg cond
-      (Just ffillBin) = getFulfillment badFfill
+      (Just ffillBin) = encodeFulfillment badFfill
       goodFfill = fulfillEd25519 pkAlice skAlice umsg cond
   assertBool "can get fulfillment payload without signature" $ 
-      Nothing /= getFulfillment cond
-  assertEqual "get uri from bad fulfillment"
-    (Right uri) $ getConditionURI <$> readStandardFulfillment ffillBin
+      Nothing /= encodeFulfillment cond
+  assertEqual "get uri from bad fulfillment" (Right uri) $
+    let econd = decodeFulfillment ffillBin :: Either String Condition
+     in getConditionURI <$> econd
   assertBool "wrong sig right message does not validate" $
       not $ validate uri badFfill msg
   assertBool "wrong msg right sig does not validate" $
