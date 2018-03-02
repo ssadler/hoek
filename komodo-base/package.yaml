@@ -43,7 +43,7 @@ library:
   source-dirs: src
 
 tests:
-  cryptoconditions-komodo-test:
+  komodo-base-test:
     main:                Spec.hs
     source-dirs:         test
     ghc-options:
