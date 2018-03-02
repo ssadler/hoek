@@ -41,7 +41,7 @@ These are the properties that we want the solution to provide.
 * Only the Dealer needs to hold PANGEA. They may obtain this token via [atomic swap exchange](https://komodoplatform.com/en/barterdex).
 * No new domain specific evaluation functions in value chain KMD (but we may introduce general purpose functions).
 * Minimal data overhead in value chain KMD.
-* On-chain dispute resolution protocol for domain specific evaluation.
+* On-chain dispute resolution protocol for application specific evaluation.
 
 ## Smart Contract Workflow
 
@@ -63,7 +63,7 @@ The below table illustrates:
 
 ### Blockchain Poker
 
-![Alt text](./sequence.svg)
+![BET sequence diagram](./sequence.svg)
 
 Let there be actors: **Dealer**, **Player1**, **Player2**. Each has a public and a private key. Addionally, **Notary** is an oracle backed by a collection of network node operators.
 
@@ -98,40 +98,32 @@ If you havn't already, this might be a good time to refer to the [transaction ba
 Transactions in this section are using a format suitable for passing to Hoek to sign and encode.
 
 ```haskell
-import Data.Aeson.Encode.Pretty
-import Data.Bits hiding (Bits)
-import qualified Data.ByteString.Lazy.Char8 as C8L
-import Data.Serialize
-import Network.Komodo.CryptoConditions
-import Network.Komodo.Transaction
-import Network.Haskoin.Crypto as H
-import Network.Haskoin.Block.Merkle as H
-import Network.Haskoin.Crypto.Keys as H
-import Network.Haskoin.Network as H
-import Network.Haskoin.Transaction as H
-import Network.Haskoin.Util as H
-import Network.Komodo.Prelude
+import           Network.Komodo.Specs.Bet
+import qualified Network.Haskoin.Internals as H
+
+
 dealer="025af7eed280ca8d1ebb294e9388378a2abf5455072c17bdf22506b6aa18dc8a24" :: H.PubKey
 player1="03c8a965089173d746144cd667c8cedf985460ecc155811bd729e461f0079222f7"
 player2="03d6de78061ca1695ba068d15ecf4a5431de9dccce7b45a73bb996e7e596acdba7"
-ecCond pk = Secp256k1 (pubKeyPoint pk) Nothing
-addressInput :: H.PubKey -> InputScript
-addressInput pk = AddressInput $ pubKeyAddr pk
+
 privKeys = [ "UrsT8pXPH1WvfTkkRzP2JsLTB6ebqhH3n6p31UcXpgyoESB9wvPp" -- dealer
            , "Up3VgThhFXFXG7QN5ykym2hkiBrfB76GNhehyUXNG7AJMdLoVPU7" -- player1
            , "UpyycopsYkknBsPd5Y2BLzKrTYVnhKoFL59H49JWn6TqXmJKxER4" -- player2
            ]
+
+
 signEncode tx = 
   let Right r = runExcept $ signTxSecp256k1 privKeys tx >>= signTxBitcoin privKeys >>= encodeTx
    in r
-main =
-  let write path tx = C8L.writeFile path $ encodePretty tx
-   in do write "specs/vectors/txFund.json" stakeTx
-         write "specs/vectors/txSession.json" startGameTx
-         write "specs/vectors/txPlayerPayout.json" playerPayoutTx
-         write "specs/vectors/txPostClaim.json" claimDataTx
-         write "specs/vectors/txResolveClaim.json" resolveClaimTx
-         write "specs/vectors/txPayoutClaim.json" payoutClaimTx
+
+
+main = do
+   writePrettyJson "specs/vectors/txFund.json" stakeTx
+   writePrettyJson "specs/vectors/txSession.json" startGameTx
+   writePrettyJson "specs/vectors/txPlayerPayout.json" playerPayoutTx
+   writePrettyJson "specs/vectors/txPostClaim.json" claimDataTx
+   writePrettyJson "specs/vectors/txResolveClaim.json" resolveClaimTx
+   writePrettyJson "specs/vectors/txPayoutClaim.json" payoutClaimTx
 ```
 
 ### Transaction: Fund
@@ -142,6 +134,11 @@ The **Fund** transaction is made on the KMD chain, and uses inputs from each pla
 
 ```haskell
 -- payout is either ImportPayout or quorum
+
+
+data Fund = Fund
+  { playerInputs :: [TxInput]
+  }
 quorumCond = Threshold 2 [ ecCond dealer
                          , Threshold 2 [ ecCond player1, ecCond player2 ] ]
 payoutCond = Threshold 1 [ quorumCond
@@ -151,9 +148,9 @@ stakeTx =
   let inputs =
         -- players fund game
         [ TxInput (OutPoint "ec851f0d887638016f5d6818a1ace0038abccdb502d2b0d661c97d853d089a65" 0) 
-                  (addressInput player1)
+                  (addressScript player1)
         , TxInput (OutPoint "b66de6fc17844c0151c2cfb146435e466290f5aacefb5b3ac1f437a0c7b046d9" 0)
-                  (addressInput player2)
+                  (addressScript player2)
         ]
       stakeAmount = 1000
       outputs = [ TxOutput stakeAmount $ CCOutput payoutCond ]
@@ -172,8 +169,6 @@ The **Session** transaction is made on the PANGEA chain, and contains the ID of 
 Note: Currently, this transaction may or may not be used; in the case that it is not used, it would be good to provide the dealer with a way to recollect the outputs, even though they maybe just amount to dust.
 
 ```haskell
-addrOutput :: Amount -> H.PubKey -> TxOutput
-addrOutput n pk = TxOutput n $ AddressOutput $ pubKeyAddr pk
 dataFee = 4
 evalFee = 10
 delayBlocks = "some number of blocks"
@@ -188,12 +183,12 @@ startGameTx =
   KTx
     -- Dealer provides units of PANGEA
     [ TxInput (OutPoint "c44de6fc17844c0151c2cfb146435e466290f5aacefb5b3ac1f437a0c7b046d9" 0)
-              (addressInput dealer)
+              (addressScript dealer)
     ]
     -- Output for each player to post game state binary
-    [ addrOutput dataFee dealer
-    , addrOutput dataFee player1
-    , addrOutput dataFee player2
+    [ addressOutput dataFee dealer
+    , addressOutput dataFee player1
+    , addressOutput dataFee player2
     , TxOutput evalFee $ CCOutput evalClaimCond
     ]
 
@@ -211,7 +206,7 @@ JSON: [txPlayerPayout.json](./vectors/txPlayerPayout.json)
 The **PlayerPayout** transaction is made on the KMD chain. It is independent of the **Session** transaction. It distributes the stake according to a payout vector that is agreed upon by a majority of the players + the dealer.
 
 ```haskell
-payouts = [addrOutput 50 dealer, addrOutput 950 player1]
+payouts = [addressOutput 50 dealer, addressOutput 950 player1]
 playerPayoutTx = KTx
   -- Spending the stake
   [ TxInput (OutPoint stakeTxid 0) $ ConditionInput payoutCond ]
@@ -228,7 +223,7 @@ The **PostClaim** transaction is made on the PANGEA chain. It registers a game s
 ```haskell
 claimDataTx = KTx
   -- Output index depends on who is making the claim
-  [ TxInput (OutPoint startGameTxid 1) (addressInput player1) ]
+  [ TxInput (OutPoint startGameTxid 1) (addressScript player1) ]
   -- There is no output amount, the whole input is fees
   [ TxOutput 0 $ CarrierOutput "game state for evaluation by PVM" ]
 ```
@@ -291,12 +286,10 @@ We're not really worried about if or when the block merkle root is encountered. 
 
 ```haskell
 
-type Bits = Word64
-
 data TxImportProof = TxImportProof
     { notarisationTxid :: TxHash
     , merkleBranch :: [H.Hash256]
-    , merklePositions :: Bits
+    , merklePositions :: Word64
     }
 
 instance Serialize TxImportProof where
@@ -307,7 +300,7 @@ instance Serialize TxImportProof where
         put $ H.VarInt pos
     get =
         let getNodes = do
-            VarInt n <- get
+            H.VarInt n <- get
             replicateM (fromIntegral n) get
          in TxImportProof <$> get <*> getNodes <*> get
 
@@ -317,14 +310,6 @@ importProofExample = TxImportProof
     (map H.hash256 ["", "0"::ByteString])                              -- Two merkle nodes
     2                                                                  -- left, right
 
-execMerkleBranch :: [H.Hash256] -> Bits -> H.Hash256 -> H.Hash256
-execMerkleBranch [] _ h = h
-execMerkleBranch (n:xs) bits h = execMerkleBranch xs (shiftR bits 1) $
-  (if testBit bits 0 then id else flip) H.hash2 n h
-
-
-verifyMerkleBranch :: [H.Hash256] -> Bits -> TxHash -> MOM -> Bool
-verifyMerkleBranch nodes bits txid mom = execMerkleBranch nodes bits (getTxHash txid) == mom
 ```
 
 ### Chain func: LockTime
