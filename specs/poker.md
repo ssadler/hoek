@@ -9,7 +9,6 @@ To facilitate participation in off-chain smart contracts on the [Komodo Platform
     1. [Stake](#transaction-stake)
     1. [StartGame](#transaction-startgame)
     1. [PlayerPayout](#transaction-playerpayout)
-1. [Weaknesses](#weaknesses)
 
 ## Introduction
 
@@ -167,8 +166,8 @@ evalFee = 10
 delayBlocks = "some number of blocks"
 -- lock time a certain number of blocks so players can post evidence,
 -- and require a sig from any participant to initiate Exec
-evalClaimCond = Threshold 3 [ Eval "nLockTime" delayBlocks
-                            , Eval "verifyPoker" ""
+evalClaimCond = Threshold 3 [ Eval "LockTime" delayBlocks
+                            , Eval "VerifyPoker" ""
                             , Threshold 1 [ ecCond dealer
                                           , ecCond player1
                                           , ecCond player2 ] ]
@@ -258,36 +257,61 @@ payoutClaimTx =
 
 ```
 
-### Notary Proof
+### Notary proof format using MOM
 
 The notary proof is neccesary since we are importing a paying vector from another chain. So the notaries are used as an oracle to say that the referenced transaction was accepted by the app-chain.
 
 App chains of this type will intermittently post notarisations to the value chain (KMD). These notarisations indicate that the block being notarised has some degree of finality, which we are going to accept. Given a transaction ID, the SPV protocol can be used to verify that it exists in a block. However, not every block is notarised, because app chains may have short block times, so they may only notarise every 100 blocks or so. In this case, in order to support payment verification across chains, the notarisation will include a **MOM** ("Merkle of Merkles").
 
-The **MOM** is simply a binary [Merkle Tree](https://en.wikipedia.org/wiki/Merkle_tree) where the leaf nodes are all the transaction merkle roots since the last notarisation, and up to and including the block currently being notarised.
+The MOM is simply a binary [Merkle Tree](https://en.wikipedia.org/wiki/Merkle_tree) where the leaf nodes are all the transaction merkle roots since the last notarisation, and up to and including the block currently being notarised.
 
-[**SPV**](https://bitcoin.org/en/glossary/simplified-payment-verification) protocol provides a merkle vector to verify that a transaction ID is contained in a block:
+[SPV](https://bitcoin.org/en/glossary/simplified-payment-verification) protocol provides a merkle vector to verify that a transaction ID is contained in a block:
 
 `txid -> merkle vector -> block merkle root`
 
-So in this case we concatenate the **SPV** merkle vector and the **MOM** merkle vector so it reaches all the way to the **MOM**:
+So in this case we concatenate the SPV merkle vector and the MOM merkle vector so it reaches all the way to the MOM:
 
 `txid -> merkle vector -> MOM`
 
-We're not really worried about if or when the block merkle root is encountered. Just that we can use the merkle vector to go from the txid to to **MOM**. The merkle vector is a list of tuples, each containing a hash and whether or not the hash is a prefix (if not, it's a suffix):
+We're not really worried about if or when the block merkle root is encountered. Just that we can use the merkle vector to go from the txid to to the MOM. The merkle vector is a list of tuples, each containing a hash and whether or not the hash is a prefix (if not, it's a suffix):
 
 
 ```haskell
+type TxImportProof = (NotarisationTxHash, MerkleBranch)
+type NotarisationTxHash = TxHash
 type MerkleBranch = ([H.Hash256], Int)
 type MOM = H.Hash256
 
 execMerkleBranch :: MerkleBranch -> H.Hash256 -> H.Hash256
 execMerkleBranch ([],_) hashFrom = hashFrom
 execMerkleBranch (n:xs,p) hashFrom = execMerkleBranch (xs,shiftR p 1) $
-  (if testBit p 1 then id else flip) H.hash2 n hashFrom
+  (if testBit p 0 then id else flip) H.hash2 n hashFrom
 
 verifyMerkleBranch :: MerkleBranch -> TxHash -> MOM -> Bool
 verifyMerkleBranch mv txid mom = execMerkleBranch mv (getTxHash txid) == mom
+```
+
+### Chain func: LockTime
+
+### Chain func: VerifyPoker
+
+### Chain func: ImportPayoutVector
+
+```haskell
+getMOM :: TxHash -> IO MOM
+getMOM txid = do
+  tx <- dbGetTx txid
+  assertNotaryTx tx
+  getFirstDataOutput tx
+  where
+    dbGetTx = undefined
+    assertNotaryTx = undefined
+    getFirstDataOutput = undefined
+
+--evalImportPayoutVector :: Tx -> TxImportProof -> IO Bool
+--evalImportPayoutVector tx (notaryTxid, mb) = do
+--  mom <- getMOM notartTxid
+--  pure $ verifyMerkleBranch
 
 ```
 
