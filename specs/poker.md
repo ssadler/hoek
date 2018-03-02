@@ -318,7 +318,30 @@ verifyMerkleBranch nodes bits txid mom = execMerkleBranch nodes bits (getTxHash 
 
 ### Chain func: LockTime
 
+LockTime is a Crypto-Conditions eval method that specifies an interval in blocks before the condition may be fulfilled, relative to the block height of the condition.
+
+Parameters:
+
+* `nBlocks`: Number of blocks encoded as a VarInt.
+
+Verifications:
+
+* That the block height of the transaction that contains the LockTime condiiton, plus `nBlocks`, is less than the current block height being mined.
+
 ### Chain func: VerifyPoker
+
+VerifyPoker is a Crypto-Conditions eval method that evaluates a data output against a set of application states. It is fulfilled by **ResolveClaim**.
+
+Parameters:
+
+* Poker GameHeader, including: game ID, public keys of participants.
+* Winning output binary, via OP\_RETURN at output 0.
+* List of posted game states, inside OP\_RETURN 0 of spending transactions for each of the parent transaction (**StartGame**) outputs starting at output 1.
+
+Verifications:
+
+1. Valid states are ones that conform to the provided GameHeader 
+1. For each of the posted game states, that the longest valid state produces the exact same binary attached in OP\_RETURN output 0. This is equivalent to the "longest chain wins" rule.
 
 ### Chain func: ImportPayoutVector
 
@@ -327,8 +350,8 @@ ImportPayoutVector is a Crypto-Conditons eval method that is used to execute a p
 Parameters:
 
 * ID of **StartGame** transaction on PANGEA, via preimage.
-* Complete body of **ResolveClaim** transaction on PANGEA, via OP\_RETURN in output 0.
-* **TxImportProof** notary proof, via OP\_RETURN in output 1.
+* Complete body of **ResolveClaim** transaction on PANGEA, via OP\_RETURN at output 0.
+* **TxImportProof** notary proof, via OP\_RETURN at output 1.
 
 Verifications:
 
@@ -357,9 +380,3 @@ getMOM txid = do
 --  pure $ verifyMerkleBranch
 
 ```
-
-### Questions
-
-* What happens if the players broadcast Stake but the dealer never broadcasts StartGame?
-* How does the notary know that the dispute pertains to the correct transaction on KMD? Put another way,
-  what's to stop a group from trying to steal another group's Stake?
