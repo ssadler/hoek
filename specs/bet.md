@@ -113,10 +113,10 @@ startGameTx =
               (addressScript dealer)
     ]
     -- Output for each player to post game state binary
-    [ addressOutput dataFee dealer
+    [ TxOutput evalFee $ CCOutput evalClaimCond
+    , addressOutput dataFee dealer
     , addressOutput dataFee player1
     , addressOutput dataFee player2
-    , TxOutput evalFee $ CCOutput evalClaimCond
     ]
 
 
@@ -197,10 +197,9 @@ The **ResolveClaim** transaction posts a resolution of the claim. The resulution
 
 ```haskell
 resolveClaimTx =
-  let claimIdx = 3 -- zero indexed n participants plus one
-      payoutsBin = encode $ toHaskoinOutput <$> payouts
+  let payoutsBin = encode $ toHaskoinOutput <$> payouts
    in KTx
-      [ TxInput (OutPoint startGameTxid claimIdx) (ConditionInput evalClaimCond) ]
+      [ TxInput (OutPoint startGameTxid 0) (ConditionInput evalClaimCond) ]
       [ TxOutput 0 (CarrierOutput payoutsBin) ]
 ```
 
@@ -223,7 +222,6 @@ payoutClaimTx =
    in KTx
       [ TxInput (OutPoint fundTxid 0) (ConditionInput payoutCond) ]
       ([ txOutResolveClaim , txOutNotaryProof ] ++ payouts)
-
 ```
 
 ### Notary proof format using MOM

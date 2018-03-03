@@ -2,7 +2,7 @@
     "inputs": [
         {
             "idx": 0,
-            "txid": "cabe8197fbbaf51281cc22138f9df8d222f45f2d7ba1ef1b08c5ebba14204640",
+            "txid": "f2b560d59ab3ab4e14a11d3c5f296d9d1678f633d4fe9758fb74b41daa60dd27",
             "script": {
                 "fulfillment": {
                     "type": "threshold-sha-256",
@@ -35,7 +35,7 @@
                         {
                             "type": "eval-sha-256",
                             "method": "ImportPayout",
-                            "preimage": "XuGb4lSHKqYx4fedPcVIbKAgnNLyfbgzZHA7pqUF8vA"
+                            "preimage": "SSK8RSMDScOD0Ufwn7pJt_UF1w7R1kEIOY1havHzuC0"
                         }
                     ]
                 }

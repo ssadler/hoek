@@ -10,24 +10,6 @@
     ],
     "outputs": [
         {
-            "amount": 4,
-            "script": {
-                "address": "RCCtwc9bgpgUGBsJ3g4T2s3W6qpLg1WJ6x"
-            }
-        },
-        {
-            "amount": 4,
-            "script": {
-                "address": "RKabR4HsmVU9bKConjm3aGsUfUXrVwDszc"
-            }
-        },
-        {
-            "amount": 4,
-            "script": {
-                "address": "RCGyMKx6Lyhpfp4AC4xXbABJu8VXoE7aoh"
-            }
-        },
-        {
             "amount": 10,
             "script": {
                 "condition": {
@@ -64,6 +46,24 @@
                         }
                     ]
                 }
+            }
+        },
+        {
+            "amount": 4,
+            "script": {
+                "address": "RCCtwc9bgpgUGBsJ3g4T2s3W6qpLg1WJ6x"
+            }
+        },
+        {
+            "amount": 4,
+            "script": {
+                "address": "RKabR4HsmVU9bKConjm3aGsUfUXrVwDszc"
+            }
+        },
+        {
+            "amount": 4,
+            "script": {
+                "address": "RCGyMKx6Lyhpfp4AC4xXbABJu8VXoE7aoh"
             }
         }
     ]
