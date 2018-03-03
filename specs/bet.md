@@ -75,8 +75,6 @@ The below table illustrates:
 
 ## Transactions
 
-If you havn't already, this might be a good time to refer to the [transaction basics](./basics.md) document.
-
 ![txs.svg](./txs.svg)
 
 1. Fund contains Session txid.
@@ -86,6 +84,8 @@ If you havn't already, this might be a good time to refer to the [transaction ba
 5. Claim resolution will verify submitted claims.
 6. Any player may submit a valid claim payout.
 7. Claim payout will verify a notary proof of resolution.
+
+If you havn't already, this might be a good time to refer to the [transaction basics](./basics.md) document.
 
 ### Transaction: Session
 
