@@ -77,9 +77,15 @@ The below table illustrates:
 
 If you havn't already, this might be a good time to refer to the [transaction basics](./basics.md) document.
 
-The basic idea is:
-
 ![txs.svg](./txs.svg)
+
+1. Fund contains Session txid.
+2. If all goes well, players all agree on a payout.
+3. Otherwise, players will post gamestates.
+4. After a time interval, players may submit claim resolutions (which must be valid).
+5. Claim resolution will verify submitted claims.
+6. Any player may submit a valid claim payout.
+7. Claim payout will verify a notary proof of resolution.
 
 ### Transaction: Session
 
