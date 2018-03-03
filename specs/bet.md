@@ -342,5 +342,4 @@ main = do
    writePrettyJson "specs/vectors/txPostClaim.json" claimDataTx
    writePrettyJson "specs/vectors/txResolveClaim.json" resolveClaimTx
    writePrettyJson "specs/vectors/txClaimPayout.json" payoutClaimTx
-
 ```

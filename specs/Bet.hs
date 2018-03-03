@@ -11,7 +11,7 @@ module Network.Komodo.Specs.Bet
 
 import           Data.Aeson (ToJSON)
 import           Data.Aeson.Encode.Pretty
-import           Data.Bits hiding (Bits)
+import           Data.Bits
 import qualified Data.ByteString.Lazy.Char8 as C8L
 import           Data.Ord (comparing)
 import           Data.Serialize as X
@@ -21,17 +21,30 @@ import           Network.Komodo.Transaction as X
 import qualified Network.Haskoin.Internals as H
 
 
-execMerkleBranch :: [H.Hash256] -> Int -> H.Hash256 -> H.Hash256
-execMerkleBranch [] _ h = h
-execMerkleBranch (n:xs) bits h = execMerkleBranch xs (shiftR bits 1) $
-  (if testBit bits 0 then id else flip) H.hash2 n h
+execMerkleBranch :: (Int, [H.Hash256]) -> H.Hash256 -> H.Hash256
+execMerkleBranch (sides, xs) = e xs 0
+  where e [] _ h = h
+        e (x:xs) i h = e xs (i+1) $
+          if testBit sides i then H.hash2 x h else H.hash2 h x
 
 
-merkleRoot :: [H.Hash256] -> H.Hash256
-merkleRoot [h] = h
-merkleRoot hs  = H.hash2 (merkleRoot left) (merkleRoot right)
-  where (left, right) = splitAt i hs
-        i = until (\x -> x*2 >= length hs) (*2) 1
+merkleBranch :: [H.Hash256] -> Int -> (Int, [H.Hash256])
+merkleBranch xs pos
+  | pos >= length xs = (-1, [])
+  | otherwise = (pos, s xs pos)
+  where
+    s [] _ = []
+    s [l] _ = []
+    s leaves idx =
+      let posx = [0,2..length leaves - 1]
+          combine n =
+            case take 2 (drop n leaves) of
+                 [a,b] -> H.hash2 a b
+                 [a]   -> H.hash2 a a
+          hashes = combine <$> posx
+          newIdx = div idx 2
+          side = min (xor idx 1) (length leaves - 1)
+       in leaves !! side : s hashes newIdx
 
 
 writePrettyJson :: ToJSON a => FilePath -> a -> IO ()
