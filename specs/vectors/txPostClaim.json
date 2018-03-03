@@ -12,7 +12,7 @@
         {
             "amount": 0,
             "script": {
-                "return": "Z2FtZSBzdGF0ZSBmb3IgZXZhbHVhdGlvbiBieSBQVk0="
+                "op_return": "Z2FtZSBzdGF0ZSBmb3IgZXZhbHVhdGlvbiBieSBQVk0="
             }
         }
     ]

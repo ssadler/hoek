@@ -129,8 +129,8 @@ instance FromJSON OutputScript where
       -- the switch is so that we get the correct parse error
         act <- (getCC <$> o .:- "condition")
            <|> (getAddr <$> o .:- "address")
-           <|> (getReturn <$> o .:- "return")
-           <|> fail "outputscript must contain condition, address, or return"
+           <|> (getReturn <$> o .:- "op_return")
+           <|> fail "outputscript must contain condition, address, or op_return"
         act
       getCC val = CCOutput <$> parseJSON val
       getAddr val = AddressOutput <$> parseJSON val
@@ -142,7 +142,7 @@ instance ToJSON OutputScript where
   toJSON (CCOutput cond) = object ["condition" .= cond]
   toJSON (AddressOutput addr) = object ["address" .= addr]
   toJSON (PubKeyOutput pk) = object ["pubkey" .= pk]
-  toJSON (CarrierOutput bs) = object ["return" .= decodeUtf8 (B64.encode bs)]
+  toJSON (CarrierOutput bs) = object ["op_return" .= decodeUtf8 (B64.encode bs)]
   toJSON (ScriptOutput script) = toJSON $ decodeUtf8 $ Haskoin.encodeHex script
 
 
