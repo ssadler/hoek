@@ -18,6 +18,7 @@ import           Data.Bits as X
 import qualified Data.ByteString.Lazy.Char8 as C8L
 import           Data.Ord (comparing)
 import           Data.Serialize as X
+import           Debug.Trace as X
 import           Network.Komodo.CryptoConditions as X
 import           Network.Komodo.Prelude as X
 import           Network.Komodo.Transaction as X

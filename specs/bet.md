@@ -233,20 +233,18 @@ payoutClaimTx =
 
 The notary proof is neccesary since we are importing a paying vector from another chain. So the notaries are used as an oracle to say that the referenced transaction was accepted by the app-chain.
 
-App chains of this type will intermittently post notarisations to the value chain (KMD). These notarisations indicate that the block being notarised has some degree of finality, which we are going to accept. Given a transaction ID, the SPV protocol can be used to verify that it exists in a block. However, not every block is notarised, because app chains may have short block times, so they may only notarise every 100 blocks or so. In this case, in order to support payment verification across chains, the notarisation will include a **MOM** ("Merkle of Merkles").
+App chains of this type will intermittently post notarisations to the value chain (KMD). These notarisations indicate that the block being notarised has some degree of finality, which we are going to accept. The [SPV](https://bitcoin.org/en/glossary/simplified-payment-verification) protocol can be used to verify that a transaction exists in a block. However, not every block is notarised, because app chains may have short block times, so they may only notarise every 100 blocks or so. In this case, in order to support payment verification across chains, the notarisation on KMD will include a **MOM** ("Merkle of Merkles").
 
 The MOM is simply a binary [Merkle Tree](https://en.wikipedia.org/wiki/Merkle_tree) where the leaf nodes are all the transaction merkle roots since the last notarisation, and up to and including the block currently being notarised.
 
-[SPV](https://bitcoin.org/en/glossary/simplified-payment-verification) protocol provides a merkle branch to verify that a transaction ID is contained in a block:
+Each block contains a transaction merkle root, so if you have the merkle branch and the index of the transaction in he block you can verify that it's there. In this case we concatenate the SPV merkle branch and the MOM merkle branch so it reaches all the way to the MOM:
 
-`txid -> merkle branch -> block merkle root`
+```haskell
+combineMerkleBranches (posa, brancha) (posb, branchb) =
+    (shiftL posb (length brancha) .|. posa, brancha ++ branchb)
+```
 
-So in this case we concatenate the SPV merkle branch and the MOM merkle branch so it reaches all the way to the MOM:
-
-`txid -> merkle branch -> MOM`
-
-We're not really worried about if or when the block merkle root is encountered. Just that we can use the merkle branch to go from the txid to to the MOM. The merkle branch is a list of node hashes, plus a varint. The bits of the varint correspond to the hashes in the list, and specify whether the node is left or right.
-
+We're not really worried about if or when the block merkle root is encountered. Just that we can use the merkle branch to go from the txid to to the MOM. The merkle branch is a list of node hashes, plus a varint. The bits of the varint correspond to the hashes in the list, and specify whether the node is left or right. Side note: the bits of the varint are actually equivalent to the index of the transaction in the block! Science!!
 
 ```haskell
 
@@ -267,12 +265,6 @@ instance Serialize TxImportProof where
         H.VarInt branchLen <- get
         branch <- replicateM (fromIntegral branchLen) get
         pure $ TxImportProof notaryTxid (pos, branch)
-
-
-combineMerkleBranches :: (Bits a, Integral a)
-                      => (a, [H.Hash256]) -> (a, [H.Hash256]) -> (a, [H.Hash256])
-combineMerkleBranches (posa, brancha) (posb, branchb) =
-    ((shiftL posb (length branchb) .|. posa), brancha ++ branchb)
 
 
 getExampleImportProof :: TxHash -> (TxImportProof, H.Hash256)
@@ -296,11 +288,11 @@ getExampleImportProof txid =
 
   where
     -- Make up some example data that exports a checkable proof
-    [a, b, c, d, e] = H.hash256 <$> ["a", "b", "c", "d", "e"::ByteString]
-    blockTxids = [b, getTxHash txid, c]
+    [a, b, c, d, e, f, g] = H.hash256 <$> ["a", "b", "c", "d", "e", "f", "g"::ByteString]
+    blockTxids = [b, c, d, e, d, e, d, e, d, e, d, e, getTxHash txid]
     blockMerkleRoot = getMerkleRoot blockTxids
     notaryTxid = "b6ae1346f5923a0566b95a66df253e1f4ab42bda593792cf03bcaa0cc0e8df68"
-    blockMerkleRoots = [d, e, blockMerkleRoot]
+    blockMerkleRoots = [f, g, blockMerkleRoot]
     mom = getMerkleRoot blockMerkleRoots
 
     -- Missing API calls
