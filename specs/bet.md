@@ -201,6 +201,9 @@ resolveClaimTx =
    in KTx
       [ TxInput (OutPoint startGameTxid 0) (ConditionInput evalClaimCond) ]
       [ TxOutput 0 (CarrierOutput payoutsBin) ]
+
+Right txResolveClaimEncoded =
+  runExcept $ signTxSecp256k1 privKeys resolveClaimTx >>= signTxBitcoin privKeys >>= encodeTx
 ```
 
 
@@ -215,10 +218,12 @@ The **ClaimPayout** transaction executes a payout vector with reference to a **R
 1. The last outputs must be a byte for byte copy of the OP\_RETURN data in **ResolveClaim**.
 
 ```haskell
+
+(importProof, mom) = getExampleImportProof $ txHash txResolveClaimEncoded
+
 payoutClaimTx =
-  let (KTx _ [TxOutput _ (CarrierOutput payoutsBs)]) = resolveClaimTx
-      txOutResolveClaim = TxOutput 0 $ CarrierOutput $ encode $ signEncode privKeys resolveClaimTx
-      txOutNotaryProof = TxOutput 0 $ CarrierOutput $ encode importProofExample
+  let txOutResolveClaim = TxOutput 0 $ CarrierOutput $ encode txResolveClaimEncoded
+      txOutNotaryProof = TxOutput 0 $ CarrierOutput $ encode importProof
    in KTx
       [ TxInput (OutPoint fundTxid 0) (ConditionInput payoutCond) ]
       ([ txOutResolveClaim , txOutNotaryProof ] ++ payouts)
@@ -246,28 +251,61 @@ We're not really worried about if or when the block merkle root is encountered. 
 ```haskell
 
 data TxImportProof = TxImportProof
-    { notarisationTxid :: TxHash
-    , merkleBranch :: [H.Hash256]
-    , merklePositions :: Word64
-    }
+    TxHash -- Txid of notarisation transaction
+    (Word64, [H.Hash256]) -- Merkle branch to MOM
+
 
 instance Serialize TxImportProof where
-    put (TxImportProof ntxid nodes pos) = do
+    put (TxImportProof ntxid (pos, branch)) = do
         put ntxid
-        put $ H.VarInt $ fromIntegral $ length nodes
-        mapM put nodes
         put $ H.VarInt pos
-    get =
-        let getNodes = do
-            H.VarInt n <- get
-            replicateM (fromIntegral n) get
-         in TxImportProof <$> get <*> getNodes <*> get
+        put $ H.VarInt $ fromIntegral $ length branch
+        mapM_ put branch
+    get = do
+        notaryTxid <- get
+        H.VarInt pos <- get
+        H.VarInt branchLen <- get
+        branch <- replicateM (fromIntegral branchLen) get
+        pure $ TxImportProof notaryTxid (pos, branch)
 
 
-importProofExample = TxImportProof
-    "0000000100010001010100000001000000000000000001010000010000000001" -- TxId of notarisation
-    (map H.hash256 ["", "0"::ByteString])                              -- Two merkle nodes
-    2                                                                  -- False, True
+combineMerkleBranches :: (Bits a, Integral a)
+                      => (a, [H.Hash256]) -> (a, [H.Hash256]) -> (a, [H.Hash256])
+combineMerkleBranches (posa, brancha) (posb, branchb) =
+    ((shiftL posb (length branchb) .|. posa), brancha ++ branchb)
+
+
+getExampleImportProof :: TxHash -> (TxImportProof, H.Hash256)
+getExampleImportProof txid =
+  let (blockId, blockMerkleRoot, blockTxids) = getTxBlock txid
+      (notaryTxid, notarisedMerkleRoots) = getNotarisationTx blockId
+
+      Just txIdx = elemIndex (getTxHash txid) blockTxids
+      txMerkle = getMerkleBranch blockTxids txIdx
+
+      Just blockIdx = elemIndex blockMerkleRoot notarisedMerkleRoots
+      blockMerkle = getMerkleBranch blockMerkleRoots blockIdx
+
+      combinedMerkle = combineMerkleBranches txMerkle blockMerkle
+      proof = TxImportProof notaryTxid combinedMerkle
+      
+      testMom = execMerkleBranch combinedMerkle $ getTxHash txid
+      testProof = if mom == testMom then proof
+                                    else error "mom calculation failed"
+   in (testProof, mom)
+
+  where
+    -- Make up some example data that exports a checkable proof
+    [a, b, c, d, e] = H.hash256 <$> ["a", "b", "c", "d", "e"::ByteString]
+    blockTxids = [b, getTxHash txid, c]
+    blockMerkleRoot = getMerkleRoot blockTxids
+    notaryTxid = "b6ae1346f5923a0566b95a66df253e1f4ab42bda593792cf03bcaa0cc0e8df68"
+    blockMerkleRoots = [d, e, blockMerkleRoot]
+    mom = getMerkleRoot blockMerkleRoots
+
+    -- Missing API calls
+    getTxBlock _ = (a, blockMerkleRoot, blockTxids)
+    getNotarisationTx _ = (notaryTxid, blockMerkleRoots)
 
 ```
 
@@ -317,24 +355,6 @@ Verifications:
 
 
 ```haskell
-
-type MOM = H.Hash256
-getMOM :: TxHash -> IO MOM
-getMOM txid = do
-  tx <- dbGetTx txid
-  assertNotaryTx tx
-  getFirstDataOutput tx
-  where
-    dbGetTx = undefined
-    assertNotaryTx = undefined
-    getFirstDataOutput = undefined
-
---evalImportPayout :: Tx -> TxImportProof -> IO Bool
---evalImportPayout tx (notaryTxid, mb) = do
---  mom <- getMOM notartTxid
---  pure $ verifyMerkleBranch
-
-
 main = do
    writePrettyJson "specs/vectors/txFund.json" fundTx
    writePrettyJson "specs/vectors/txSession.json" startGameTx

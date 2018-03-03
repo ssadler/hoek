@@ -7,11 +7,14 @@ module Network.Komodo.Specs.Bet
   , ecCond
   , signEncode
   , writePrettyJson
+  , execMerkleBranch
+  , getMerkleBranch
+  , getMerkleRoot
   ) where
 
 import           Data.Aeson (ToJSON)
 import           Data.Aeson.Encode.Pretty
-import           Data.Bits
+import           Data.Bits as X
 import qualified Data.ByteString.Lazy.Char8 as C8L
 import           Data.Ord (comparing)
 import           Data.Serialize as X
@@ -21,30 +24,46 @@ import           Network.Komodo.Transaction as X
 import qualified Network.Haskoin.Internals as H
 
 
-execMerkleBranch :: (Int, [H.Hash256]) -> H.Hash256 -> H.Hash256
+execMerkleBranch :: (Bits a, Integral a) => (a, [H.Hash256]) -> H.Hash256 -> H.Hash256
 execMerkleBranch (sides, xs) = e xs 0
   where e [] _ h = h
         e (x:xs) i h = e xs (i+1) $
           if testBit sides i then H.hash2 x h else H.hash2 h x
 
 
-merkleBranch :: [H.Hash256] -> Int -> (Int, [H.Hash256])
-merkleBranch xs pos
-  | pos >= length xs = (-1, [])
-  | otherwise = (pos, s xs pos)
+getMerkleBranch :: Integral a => [H.Hash256] -> Int -> (a, [H.Hash256])
+getMerkleBranch xs pos
+  | pos >= length xs = error "position out of range in getMerkleBranch"
+  | otherwise = (fromIntegral pos, s xs pos)
   where
     s [] _ = []
     s [l] _ = []
     s leaves idx =
-      let posx = [0,2..length leaves - 1]
+      let pairs = [0,2..length leaves - 1]
           combine n =
             case take 2 (drop n leaves) of
                  [a,b] -> H.hash2 a b
                  [a]   -> H.hash2 a a
-          hashes = combine <$> posx
+          hashes = combine <$> pairs
           newIdx = div idx 2
           side = min (xor idx 1) (length leaves - 1)
        in leaves !! side : s hashes newIdx
+
+
+combineMerklePairs :: [H.Hash256] -> [H.Hash256]
+combineMerklePairs leaves =
+  let pairs = [0,2..length leaves - 1]
+      combine n =
+        case take 2 (drop n leaves) of
+             [a,b] -> H.hash2 a b
+             [a]   -> H.hash2 a a
+   in combine <$> pairs
+
+
+getMerkleRoot :: [H.Hash256] -> H.Hash256
+getMerkleRoot [] = error "can't getMerkleRoot of no elements"
+getMerkleRoot [h] = h
+getMerkleRoot leaves = getMerkleRoot $ combineMerklePairs leaves
 
 
 writePrettyJson :: ToJSON a => FilePath -> a -> IO ()
