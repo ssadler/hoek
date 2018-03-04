@@ -2,7 +2,7 @@
     "inputs": [
         {
             "idx": 0,
-            "txid": "2db8f3f16a618d390841d6d10ed705f5b749ba9ff047d183c349032345bc2249",
+            "txid": "3e34cfc8c7e05d136e4356ef6266838315fa686a91503d1902e8ef4de5a719e3",
             "script": {
                 "fulfillment": {
                     "type": "threshold-sha-256",
@@ -16,7 +16,7 @@
                         {
                             "type": "eval-sha-256",
                             "method": "VerifyPoker",
-                            "preimage": ""
+                            "preimage": "Alr37tKAyo0euylOk4g3iiq_VFUHLBe98iUGtqoY3IokAgPIqWUIkXPXRhRM1mfIzt-YVGDswVWBG9cp5GHwB5Ii9wPW3ngGHKFpW6Bo0V7PSlQx3p3MzntFpzu5lufllqzbp2TjsMRCmPwcFJr79MiZb7kkJ65B5GSbk0yklZkbeFK4VQ"
                         },
                         {
                             "type": "threshold-sha-256",

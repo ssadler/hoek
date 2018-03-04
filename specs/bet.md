@@ -106,7 +106,7 @@ delayBlocks = "some number of blocks"
 -- lock time a certain number of blocks so players can post evidence,
 -- and require a sig from any participant to initiate VerifyPoker
 evalClaimCond = Threshold 3 [ Eval "LockTime" delayBlocks
-                            , Eval "VerifyPoker" ""
+                            , Eval "VerifyPoker" (encode examplePokerHeader)
                             , Threshold 1 [ ecCond dealer
                                           , ecCond player1
                                           , ecCond player2 ] ]
@@ -295,7 +295,7 @@ pokerVM _ "invalid" = Nothing
 
 
 cheatPayouts = [addressOutput 10 dealer, addressOutput 400 player1, addressOutput 590 player2]
-
+examplePokerHeader = PokerHeader dealer [player1, player2] (H.VarInt 100) (H.hash256 (""::ByteString))
 
 data PokerHeader = PokerHeader
   H.PubKey    -- Dealer pubkey
@@ -465,7 +465,7 @@ Below is the entry point to execute this document.
 ```haskell
 main = do
    verifyImportPayout payoutClaimTx startGameTxid
-   verifyPoker resolveClaimTx undefined
+   verifyPoker resolveClaimTx examplePokerHeader
    writePrettyJson "specs/vectors/txFund.json" fundTx
    writePrettyJson "specs/vectors/txSession.json" startGameTx
    writePrettyJson "specs/vectors/txPlayerPayout.json" playerPayoutTx

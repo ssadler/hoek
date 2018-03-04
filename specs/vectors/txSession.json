@@ -24,7 +24,7 @@
                         {
                             "type": "eval-sha-256",
                             "method": "VerifyPoker",
-                            "preimage": ""
+                            "preimage": "Alr37tKAyo0euylOk4g3iiq_VFUHLBe98iUGtqoY3IokAgPIqWUIkXPXRhRM1mfIzt-YVGDswVWBG9cp5GHwB5Ii9wPW3ngGHKFpW6Bo0V7PSlQx3p3MzntFpzu5lufllqzbp2TjsMRCmPwcFJr79MiZb7kkJ65B5GSbk0yklZkbeFK4VQ"
                         },
                         {
                             "type": "threshold-sha-256",
