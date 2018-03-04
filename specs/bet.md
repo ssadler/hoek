@@ -123,9 +123,7 @@ startGameTx =
     ]
 
 
-startGameTxEncoded :: H.Tx
-Right startGameTxEncoded =
-  runExcept $ signTxSecp256k1 privKeys startGameTx >>= signTxBitcoin privKeys >>= encodeTx
+startGameTxEncoded = signEncode privKeys startGameTx
 startGameTxid = txHash startGameTxEncoded
 ```
 
@@ -210,9 +208,7 @@ resolveClaimTx =
       [ TxInput (OutPoint startGameTxid 0) (ConditionInput evalClaimCond) ]
       [ TxOutput 0 (CarrierOutput payoutsBin) ]
 
-Right txResolveClaimEncoded =
-  runExcept $ signTxSecp256k1 privKeys resolveClaimTx >>= signTxBitcoin privKeys >>= encodeTx
-
+txResolveClaimEncoded = signEncode privKeys resolveClaimTx
 ```
 
 ### ClaimPayout
@@ -487,7 +483,7 @@ echo ":set -XOverloadedStrings
 :set -pgmL markdown-unlit
 " >> ~/.ghci
 stack repl --no-load
- λ> :load specs/bet.lhs
- λ> main
+ λ :load specs/bet.lhs
+ λ main
 ```
 
