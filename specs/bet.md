@@ -404,6 +404,7 @@ main = do
 To execute this document as a script do the following:
 
 ```shell
+cd /path/to/hoek
 stack install markdown-unlit
 echo ":set -XOverloadedStrings
 :set prompt " λ "
