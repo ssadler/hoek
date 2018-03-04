@@ -113,3 +113,17 @@ encodePayouts payouts = runPut $ putVarList $ toHaskoinOutput <$> payouts
 assert :: String -> Bool -> IO ()
 assert label cond = if not cond then fail ("could not assert: " ++ label) else pure ()
 
+
+-- data FundOffchainTx = FundOffchain { getSessionTxid :: TxHash }
+-- data PlayerPayout = PlayerPayout { getFundTx :: FundOffchain
+--                                  , getPayout :: [TxOutput]
+--                                  }
+-- data ClaimPayout = ClaimPayout { getFundTx :: FundOffchain
+--                                , getImportProof :: TxImportProof
+--                                , getResolutionTx :: Tx
+--                                }
+-- data PlayPoker h = PlayPoker { getHeader :: h }
+-- data PostClaim = PostClaim { getBody :: ByteString }
+-- data ResolveClaim s = ResolveClaim { getSession :: s
+--                                    , getPayout :: [TxOutput]
+--                                    }
