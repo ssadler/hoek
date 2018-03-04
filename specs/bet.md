@@ -80,8 +80,8 @@ The below table illustrates:
 
 ![txs.svg](./txs.svg)
 
-1. [#FundOffChain] contains [#PlayPoker] txid.
-2. If all goes well, players all agree on a [#PlayerPayout] (n/2+1+dealer).
+1. [FundOffChain](#fundoffchain) contains [PlayPoker](#playpoker) txid.
+2. If all goes well, players all agree on a [PlayerPayout](#PlayerPayout) (n/2+1+dealer).
 3. Otherwise, players will [post gamestates](#PostClaim).
 4. After a [time interval](#LockTime), any player may [submit a valid claim resolution](#ResolveClaim).
 5. Claim resolution will [verify submitted claims](#VerifyPoker).
