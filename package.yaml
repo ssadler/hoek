@@ -58,6 +58,7 @@ executables:
     - hoek
 
 tests:
+
   hoek-test:
     main:                Tests.hs
     source-dirs:         test
@@ -66,6 +67,19 @@ tests:
     - -rtsopts
     - -with-rtsopts=-N
     dependencies:
+    - hoek
+    - tasty
+    - tasty-hunit
+    - QuickCheck
+
+  hoek-spec-bet:
+    main:                bet.lhs
+    source-dirs:         specs
+    ghc-options:
+    - -pgmL markdown-unlit
+    - -XOverloadedStrings
+    dependencies:
+    - markdown-unlit
     - hoek
     - tasty
     - tasty-hunit

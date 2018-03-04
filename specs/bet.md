@@ -31,7 +31,7 @@ There is a **Dealer**, who owns some PANGEA.
 
 Each participant is identified by a public key and has a private key.
 
-This document illustrates by way of an executable Haskell script. See also [Bet.hs](./Bet.hs) for supporting code.
+This document illustrates by way of an executable Haskell script. See also [Bet.hs](./Network/Komodo/Specs/Bet.hs) for supporting code.
 
 ```haskell
 import           Network.Komodo.Specs.Bet
@@ -483,14 +483,11 @@ main = do
 To execute this document as a script do the following:
 
 ```shell
-cd /path/to/hoek
-stack install markdown-unlit
-echo ":set -XOverloadedStrings
-:set prompt " λ "
-:set -pgmL markdown-unlit
-" >> ~/.ghci
-stack repl --no-load
- λ :load specs/bet.lhs
- λ main
+stack test hoek:hoek-spec-bet
 ```
 
+Or to debug interactively:
+
+```shell
+stack repl hoek:hoek-spec-bet
+```
