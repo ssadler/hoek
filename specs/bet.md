@@ -197,13 +197,18 @@ The **ResolveClaim** transaction posts a resolution of the claim. The resulution
 
 ```haskell
 resolveClaimTx =
-  let payoutsBin = encode $ toHaskoinOutput <$> payouts
+  let payoutsBin = encodePayouts payouts
    in KTx
       [ TxInput (OutPoint startGameTxid 0) (ConditionInput evalClaimCond) ]
       [ TxOutput 0 (CarrierOutput payoutsBin) ]
 
 Right txResolveClaimEncoded =
   runExcept $ signTxSecp256k1 privKeys resolveClaimTx >>= signTxBitcoin privKeys >>= encodeTx
+
+
+encodePayouts payouts = runPut $
+    do put $ H.VarInt $ fromIntegral $ length payouts
+       mapM_ put $ toHaskoinOutput <$> payouts
 ```
 
 
@@ -291,14 +296,16 @@ getExampleImportProof txid =
     [a, b, c, d, e, f, g] = H.hash256 <$> ["a", "b", "c", "d", "e", "f", "g"::ByteString]
     blockTxids = [b, c, d, e, d, e, d, e, d, e, d, e, getTxHash txid]
     blockMerkleRoot = getMerkleRoot blockTxids
-    notaryTxid = "b6ae1346f5923a0566b95a66df253e1f4ab42bda593792cf03bcaa0cc0e8df68"
     blockMerkleRoots = [f, g, blockMerkleRoot]
     mom = getMerkleRoot blockMerkleRoots
 
     -- Missing API calls
     getTxBlock _ = (a, blockMerkleRoot, blockTxids)
-    getNotarisationTx _ = (notaryTxid, blockMerkleRoots)
+    getNotarisationTx _ = (notarisationTxid, blockMerkleRoots)
 
+
+notarisationTxid :: TxHash
+notarisationTxid = "b6ae1346f5923a0566b95a66df253e1f4ab42bda593792cf03bcaa0cc0e8df68"
 ```
 
 ### Chain func: LockTime
@@ -345,9 +352,47 @@ Verifications:
 1. That the TxImportProof is valid given the txid of the ResolveClaim transaction and the MOM from the notarisation.
 1. That the OP\_RETURN output of the attached ResolveClaim transaction is exactly equal to the outputs in ClaimPayout, not including the attachments (drop the attachments from the list of outputs of ClaimPayout).
 
+```haskell
+verifyImportPayout :: KTx -> TxHash -> IO ()
+verifyImportPayout (KTx _ outputs) sessionId = do
+  let ((TxOutput _ (CarrierOutput bodyResolveClaim)) :
+       (TxOutput _ (CarrierOutput bodyImportProof)) :
+       payouts) = outputs
+
+      (givenSessionId, givenPayouts) =
+        case decodeTxBin bodyResolveClaim of
+          Right (KTx [TxInput (OutPoint gid 0) _] [TxOutput _ (CarrierOutput gp)]) -> (gid, gp)
+          e -> error $ show e
+
+      Right (TxImportProof notarTxid branch) = decode bodyImportProof
+      mom = getNotaryMom notarTxid
+
+  assert "session id correct" $ sessionId == givenSessionId
+  assert "merkle proof valid" $ execMerkleBranch branch (H.doubleHash256 bodyResolveClaim) == mom
+  assert "payouts match" $ encodePayouts payouts == givenPayouts
+  assert "notary tx legit" True  -- can't verify here
+
+    where
+      assert label cond = if not cond then fail ("could not assert: " ++ label) else pure ()
+
+      decodeTxBin bin =
+        let Right tx = decode bin
+         in runExcept $ decodeTx tx
+
+      -- Missing API method
+      getNotaryMom notarTxid =
+        if notarTxid == notarisationTxid then mom
+                                         else error "wrong notarisationTxid given"
+
+```
+
+## Test
+
+Below is the entry point to execute this document.
 
 ```haskell
 main = do
+   verifyImportPayout payoutClaimTx startGameTxid
    writePrettyJson "specs/vectors/txFund.json" fundTx
    writePrettyJson "specs/vectors/txSession.json" startGameTx
    writePrettyJson "specs/vectors/txPlayerPayout.json" playerPayoutTx
@@ -355,3 +400,17 @@ main = do
    writePrettyJson "specs/vectors/txResolveClaim.json" resolveClaimTx
    writePrettyJson "specs/vectors/txClaimPayout.json" payoutClaimTx
 ```
+
+To execute this document as a script do the following:
+
+```shell
+stack install markdown-unlit
+echo ":set -XOverloadedStrings
+:set prompt " λ "
+:set -pgmL markdown-unlit
+" >> ~/.ghci
+stack repl --no-load
+ λ> :load specs/bet.lhs
+ λ> main
+```
+

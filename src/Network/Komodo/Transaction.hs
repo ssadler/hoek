@@ -90,6 +90,7 @@ convertScriptOutput :: H.ScriptOutput -> Except Err OutputScript
 convertScriptOutput (H.PayPKHash hash) = pure $ AddressOutput $ H.PubKeyAddress hash
 convertScriptOutput (H.PayCondition cond) = pure $ CCOutput cond
 convertScriptOutput (H.PayPK pk) = pure $ PubKeyOutput pk
+convertScriptOutput (H.DataCarrier bs) = pure $ CarrierOutput bs
 convertScriptOutput so = throwE $ otherErr $ "Cannot decode output: " ++ show so
 
 
