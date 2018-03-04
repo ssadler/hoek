@@ -1,18 +1,18 @@
 digraph Txs {
     node [shape=hexagon]
     node [color=green]
-    Fund
+    FundOffChain
     PlayerPayout
     ClaimPayout
     node [color=black]
-    Session -> Fund [style=dotted, xlabel=1]
-    Fund -> PlayerPayout [xlabel=2]
+    PlayPoker -> FundOffChain [style=dotted, xlabel=1]
+    FundOffChain -> PlayerPayout [xlabel=2]
     edge [color=purple]
-    Session -> PostClaim [label=3]
-    Session -> ResolveClaim [label=4]
+    PlayPoker -> PostClaim [label=3]
+    PlayPoker -> ResolveClaim [label=4]
     PostClaim -> ResolveClaim [style=dotted,label=5]
-    Fund -> ClaimPayout [label=6]
+    FundOffChain -> ClaimPayout [label=6]
     ResolveClaim -> ClaimPayout [style=dotted,label=7]
-    Fund -> PostClaim [color=white]
+    FundOffChain -> PostClaim [color=white]
     {rank = same; ClaimPayout; PlayerPayout; }
 }
