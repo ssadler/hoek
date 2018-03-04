@@ -16,8 +16,9 @@ To facilitate participation in off-chain smart contracts on the [Komodo Platform
    * [LockTime](#locktime)
    * [VerifyPoker](#verifypoker)
    * [ImportPayout](#importpayout)
+* [Poker VM](#poker-vm)
 * [Notary proof format using MOM](#notary-proof-format-using-mom)
-* [Missing API methods](#missing-api-methods)
+* [Required API methods](#required-api-methods)
 * [Testing](#testing)
 
 ## Introduction
@@ -287,32 +288,7 @@ verifyPoker (KTx [TxInput (OutPoint sessionId 0) _] outputs) ph = do
   where
     getTxSpends _ = pure $ Nothing : (Just <$> claimDataTxs)
 
-
-pokerVM :: PokerHeader -> PokerBody -> Maybe PokerResult
-pokerVM _ "cheat"   = Just (10, encodePayouts cheatPayouts)
-pokerVM _ "win"     = Just (20, encodePayouts payouts)
-pokerVM _ "invalid" = Nothing
-
-
-cheatPayouts = [addressOutput 10 dealer, addressOutput 400 player1, addressOutput 590 player2]
-examplePokerHeader = PokerHeader dealer [player1, player2] (H.VarInt 100) (H.hash256 (""::ByteString))
-
-data PokerHeader = PokerHeader
-  H.PubKey    -- Dealer pubkey
-  [H.PubKey]  -- Player pubkeys
-  H.VarInt    -- Fractional dealer commission (1/n)
-  H.Hash256   -- Entropy
-
-
-instance Serialize PokerHeader where
-  put (PokerHeader dpk pks gid bs) = put dpk >> putVarList pks >> put gid >> put bs
-  get = PokerHeader <$> get <*> getVarList <*> get <*> get
-
-type PokerBody = ByteString
-type PokerResult = (Int, ByteString)  -- Length of game, binary payouts
-
 ```
-
 
 ### ImportPayout
 
@@ -361,6 +337,46 @@ verifyImportPayout (KTx _ outputs) sessionId = do
         if notarTxid == notarisationTxid then mom
                                          else error "wrong notarisationTxid given"
 ```
+
+
+## Poker VM
+
+The poker virtual should:
+
+* Be fully deterministic with respect to it's inputs
+* Store public keys and other game parameters needed to verify a game in a separate header
+* Store only game moves and signatures in the body
+* Return an integer indicating the length of the game (longest valid chain rule)
+* Return a binary containing serialized bitcoin transaction outputs awarding to the players
+* Return NULL if the given gamestate is invalid
+
+```haskell
+pokerVM :: PokerHeader -> PokerBody -> Maybe PokerResult
+pokerVM _ "cheat"   = Just (10, encodePayouts cheatPayouts)
+pokerVM _ "win"     = Just (20, encodePayouts payouts)
+pokerVM _ "invalid" = Nothing
+
+
+cheatPayouts = [addressOutput 10 dealer, addressOutput 400 player1, addressOutput 590 player2]
+examplePokerHeader = PokerHeader dealer [player1, player2] (H.VarInt 100) (H.hash256 (""::ByteString))
+
+
+data PokerHeader = PokerHeader
+  H.PubKey    -- Dealer pubkey
+  [H.PubKey]  -- Player pubkeys
+  H.VarInt    -- Fractional dealer commission (1/n)
+  H.Hash256   -- Entropy
+
+
+instance Serialize PokerHeader where
+  put (PokerHeader dpk pks gid bs) = put dpk >> putVarList pks >> put gid >> put bs
+  get = PokerHeader <$> get <*> getVarList <*> get <*> get
+
+
+type PokerBody = ByteString
+type PokerResult = (Int, ByteString)  -- Length of game, binary payouts
+```
+
 
 ## Notary proof format using MOM
 
