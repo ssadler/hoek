@@ -4,7 +4,7 @@ To facilitate participation in off-chain smart contracts on the [Komodo Platform
 
 * [Introduction](#introduction)
    * [Properties](#properties)
-* [Contract Security](#contract-security)
+   * [Contract Security](#contract-security)
 * [Transactions](#transactions)
    * [PlayPoker](#playpoker)
    * [FundOffChain](#fundoffchain)
@@ -19,6 +19,10 @@ To facilitate participation in off-chain smart contracts on the [Komodo Platform
 * [Poker VM](#poker-vm)
 * [Notary proof format using MOM](#notary-proof-format-using-mom)
 * [Required API methods](#required-api-methods)
+   * [getTxBlock](#gettxblock)
+   * [getNotarisationTxByBlock](#getnotarisationtxbyblock)
+   * [getNotaryMom](#getnotarymom)
+   * [getTxSpends](#gettxspends)
 * [Testing](#testing)
 
 ## Introduction
@@ -56,7 +60,7 @@ These are the properties that we want the solution to provide.
 * No new domain specific evaluation functions in value chain KMD (but we may introduce general purpose functions).
 * On-chain dispute resolution protocol for when things go awry.
 
-## Contract Security
+### Contract Security
 
 In an ideal world, in order to facilitate off chain smart contracts we could simply have the players fund an escrow transaction, do their off-chain processing, and submit an escrow release with an updated payout vector.
 
@@ -441,28 +445,34 @@ notarisationTxid = "b6ae1346f5923a0566b95a66df253e1f4ab42bda593792cf03bcaa0cc0e8
 
 These methods have not been implemented here:
 
-**getTxBlock**:
+### getTxBlock
 
 * in: Transaction ID
 * out: block header
 * out: list of transaction IDs in the block
 
-**getNotarisationTxByBlock**:
+Notes: This is required to get the merkle branch for a transaction that only has an OP\_RETURN output. If OP\_RETURN outputs are being pruned from the UTXO set we will need to give it another output to avoid scanning blocks on disk.
+
+### getNotarisationTxByBlock
 
 * in: name of app chain
 * in: block id
 * out: ID of notary tx
 * out: merkle roots notarised in TX
 
-**getNotaryMom**
+Notes: This will likely require a change to the index of notarisations.
+
+### getNotaryMom
 
 * in: notary tx id
 * out: MOM for notarised blocks
 
-**getTxSpends**
+### getTxSpends
 
 * in: txid
 * out: transactions that spend each output or NULL if unspent
+
+Notes: Bitcoin was never designed to do this, in order to do this efficiently we would need some kind of STXO index and no such thing exists as far as I know. Currently it's unclear how to go from a transaction to it's spends because the tree is only linked in one direction ie output -> input.
 
 ## Testing
 

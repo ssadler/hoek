@@ -58,7 +58,6 @@ executables:
     - hoek
 
 tests:
-
   hoek-test:
     main:                Tests.hs
     source-dirs:         test
