@@ -1,19 +1,59 @@
-{
-    "inputs": [
-        {
-            "idx": 1,
-            "txid": "2db8f3f16a618d390841d6d10ed705f5b749ba9ff047d183c349032345bc2249",
-            "script": {
-                "address": "RKabR4HsmVU9bKConjm3aGsUfUXrVwDszc"
+[
+    {
+        "inputs": [
+            {
+                "idx": 0,
+                "txid": "2db8f3f16a618d390841d6d10ed705f5b749ba9ff047d183c349032345bc2249",
+                "script": {
+                    "address": "RCCtwc9bgpgUGBsJ3g4T2s3W6qpLg1WJ6x"
+                }
             }
-        }
-    ],
-    "outputs": [
-        {
-            "amount": 0,
-            "script": {
-                "op_return": "Z2FtZSBzdGF0ZSBmb3IgZXZhbHVhdGlvbiBieSBQVk0="
+        ],
+        "outputs": [
+            {
+                "amount": 0,
+                "script": {
+                    "op_return": "d2lu"
+                }
             }
-        }
-    ]
-}
+        ]
+    },
+    {
+        "inputs": [
+            {
+                "idx": 1,
+                "txid": "2db8f3f16a618d390841d6d10ed705f5b749ba9ff047d183c349032345bc2249",
+                "script": {
+                    "address": "RKabR4HsmVU9bKConjm3aGsUfUXrVwDszc"
+                }
+            }
+        ],
+        "outputs": [
+            {
+                "amount": 0,
+                "script": {
+                    "op_return": "Y2hlYXQ="
+                }
+            }
+        ]
+    },
+    {
+        "inputs": [
+            {
+                "idx": 2,
+                "txid": "2db8f3f16a618d390841d6d10ed705f5b749ba9ff047d183c349032345bc2249",
+                "script": {
+                    "address": "RCGyMKx6Lyhpfp4AC4xXbABJu8VXoE7aoh"
+                }
+            }
+        ],
+        "outputs": [
+            {
+                "amount": 0,
+                "script": {
+                    "op_return": "aW52YWxpZA=="
+                }
+            }
+        ]
+    }
+]

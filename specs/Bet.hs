@@ -4,12 +4,16 @@ module Network.Komodo.Specs.Bet
   ( module X
   , addressScript
   , addressOutput
+  , assert
   , ecCond
+  , encodePayouts
   , signEncode
   , writePrettyJson
   , execMerkleBranch
   , getMerkleBranch
   , getMerkleRoot
+  , putVarList
+  , getVarList
   ) where
 
 import           Data.Aeson (ToJSON)
@@ -93,3 +97,24 @@ signEncode :: [H.PrvKey] -> KTx -> H.Tx
 signEncode keys tx = 
   let Right r = runExcept $ signTxSecp256k1 keys tx >>= signTxBitcoin keys >>= encodeTx
    in r
+
+
+putVarList :: Serialize a => Putter [a]
+putVarList l = do
+  put $ H.VarInt $ fromIntegral $ length l
+  mapM_ put l
+
+
+getVarList :: Serialize a => Get [a]
+getVarList = do
+  H.VarInt len <- get
+  replicateM (fromIntegral len) get
+
+
+encodePayouts :: [TxOutput] -> ByteString
+encodePayouts payouts = runPut $ putVarList $ toHaskoinOutput <$> payouts
+
+
+assert :: String -> Bool -> IO ()
+assert label cond = if not cond then fail ("could not assert: " ++ label) else pure ()
+

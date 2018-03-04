@@ -16,8 +16,7 @@ To facilitate participation in off-chain smart contracts on the [Komodo Platform
    * [LockTime](#locktime)
    * [VerifyPoker](#verifypoker)
    * [ImportPayout](#importpayout)
-* [Other](#other)
-   * [Notary proof format using MOM](#notary-proof-format-using-mom)
+* [Notary proof format using MOM](#notary-proof-format-using-mom)
 * [Missing API methods](#missing-api-methods)
 * [Testing](#testing)
 
@@ -186,11 +185,16 @@ JSON: [txPostClaim.json](./vectors/txPostClaim.json)
 The **PostClaim** transaction is made on the PANGEA chain. It registers a game state for evaluation, in the case that **PlayerPayout** is not possible for some reason. Each player has the opportunity to perform a **PostClaim** by spending an output of the **Session** transaction.
 
 ```haskell
-claimDataTx = KTx
+makeClaimDataTx pk idx bin = KTx
   -- Output index depends on who is making the claim
-  [ TxInput (OutPoint startGameTxid 1) (addressScript player1) ]
+  [ TxInput (OutPoint startGameTxid idx) (addressScript pk) ]
   -- There is no output amount, the whole input is fees
-  [ TxOutput 0 $ CarrierOutput "game state for evaluation by PVM" ]
+  [ TxOutput 0 $ CarrierOutput bin ]
+
+claimDataTxs = [ makeClaimDataTx dealer 0 "win"
+               , makeClaimDataTx player1 1 "cheat"
+               , makeClaimDataTx player2 2 "invalid"
+               ]
 ```
 
 ### Transaction: ResolveClaim
@@ -209,12 +213,7 @@ resolveClaimTx =
 Right txResolveClaimEncoded =
   runExcept $ signTxSecp256k1 privKeys resolveClaimTx >>= signTxBitcoin privKeys >>= encodeTx
 
-
-encodePayouts payouts = runPut $
-    do put $ H.VarInt $ fromIntegral $ length payouts
-       mapM_ put $ toHaskoinOutput <$> payouts
 ```
-
 
 ### Transaction: ClaimPayout
 
@@ -271,6 +270,53 @@ Verifications:
 1. Valid states are ones that conform to the provided GameHeader 
 1. For each of the posted game states, that the longest valid state produces the exact same binary attached in OP\_RETURN output 0. This is equivalent to the "longest chain wins" rule.
 
+```haskell
+
+verifyPoker :: KTx -> PokerHeader -> IO ()
+verifyPoker (KTx [TxInput (OutPoint sessionId 0) _] outputs) ph = do
+  -- traverse to Session via Input, then get spent of Session from position 1
+  sessionSpends <- catMaybes . drop 1 <$> getTxSpends sessionId
+  let gamestates = [bs | KTx _ [TxOutput _ (CarrierOutput bs)] <- sessionSpends]
+  assert "posted gamestates" $ gamestates /= []
+  let results = catMaybes $ pokerVM ph <$> gamestates
+  assert "have valid results" $ results /= []
+  let (_, goodPayouts) = head $ reverse $ sort results
+
+  let givenPayouts = case outputs of
+        [TxOutput _ (CarrierOutput gp)] -> gp
+        _ -> error "output incorrect"
+  assert "given payouts correct" $ givenPayouts == goodPayouts
+
+  where
+    getTxSpends _ = pure $ Nothing : (Just <$> claimDataTxs)
+
+
+pokerVM :: PokerHeader -> PokerBody -> Maybe PokerResult
+pokerVM _ "cheat"   = Just (10, encodePayouts cheatPayouts)
+pokerVM _ "win"     = Just (20, encodePayouts payouts)
+pokerVM _ "invalid" = Nothing
+
+
+cheatPayouts = [addressOutput 10 dealer, addressOutput 400 player1, addressOutput 590 player2]
+
+
+data PokerHeader = PokerHeader
+  H.PubKey    -- Dealer pubkey
+  [H.PubKey]  -- Player pubkeys
+  H.VarInt    -- Fractional dealer commission (1/n)
+  H.Hash256   -- Entropy
+
+
+instance Serialize PokerHeader where
+  put (PokerHeader dpk pks gid bs) = put dpk >> putVarList pks >> put gid >> put bs
+  get = PokerHeader <$> get <*> getVarList <*> get <*> get
+
+type PokerBody = ByteString
+type PokerResult = (Int, ByteString)  -- Length of game, binary payouts
+
+```
+
+
 ### ImportPayout
 
 ImportPayout is a Crypto-Conditons eval method that is used to execute a payout vector from another chain. It is fulfilled by the **ClaimPayout** transaction on KMD chain.
@@ -309,8 +355,6 @@ verifyImportPayout (KTx _ outputs) sessionId = do
   assert "notary tx legit" True  -- can't verify here
 
     where
-      assert label cond = if not cond then fail ("could not assert: " ++ label) else pure ()
-
       decodeTxBin bin =
         let Right tx = decode bin
          in runExcept $ decodeTx tx
@@ -321,9 +365,7 @@ verifyImportPayout (KTx _ outputs) sessionId = do
                                          else error "wrong notarisationTxid given"
 ```
 
-## Other
-
-### Notary proof format using MOM
+## Notary proof format using MOM
 
 The notary proof is neccesary since we are importing a paying vector from another chain. So the notaries are used as an oracle to say that the referenced transaction was accepted by the app-chain.
 
@@ -338,7 +380,7 @@ combineMerkleBranches (posa, brancha) (posb, branchb) =
     (shiftL posb (length brancha) .|. posa, brancha ++ branchb)
 ```
 
-We're not really worried about if or when the block merkle root is encountered. Just that we can use the merkle branch to go from the txid to to the MOM. The merkle branch is a list of node hashes, plus a varint. The bits of the varint correspond to the hashes in the list, and specify whether the node is left or right. Side note: the bits of the varint are actually equivalent to the index of the transaction in the block! Science!!
+We're not really worried about if or when the block merkle root is encountered. Just that we can use the merkle branch to go from the txid to to the MOM.
 
 ```haskell
 
@@ -348,16 +390,12 @@ data TxImportProof = TxImportProof
 
 
 instance Serialize TxImportProof where
-    put (TxImportProof ntxid (pos, branch)) = do
-        put ntxid
-        put $ H.VarInt pos
-        put $ H.VarInt $ fromIntegral $ length branch
-        mapM_ put branch
+    put (TxImportProof ntxid (pos, branch)) =
+        put ntxid >> put (H.VarInt pos) >> putVarList branch
     get = do
         notaryTxid <- get
         H.VarInt pos <- get
-        H.VarInt branchLen <- get
-        branch <- replicateM (fromIntegral branchLen) get
+        branch <- getVarList
         pure $ TxImportProof notaryTxid (pos, branch)
 
 
@@ -396,7 +434,9 @@ notarisationTxid :: TxHash
 notarisationTxid = "b6ae1346f5923a0566b95a66df253e1f4ab42bda593792cf03bcaa0cc0e8df68"
 ```
 
-## Missing API methods
+## Required API methods
+
+These methods have not been implemented here:
 
 **getTxBlock**:
 
@@ -416,6 +456,11 @@ notarisationTxid = "b6ae1346f5923a0566b95a66df253e1f4ab42bda593792cf03bcaa0cc0e8
 * in: notary tx id
 * out: MOM for notarised blocks
 
+**getTxSpends**
+
+* in: txid
+* out: transactions that spend each output or NULL if unspent
+
 ## Testing
 
 Below is the entry point to execute this document.
@@ -423,10 +468,11 @@ Below is the entry point to execute this document.
 ```haskell
 main = do
    verifyImportPayout payoutClaimTx startGameTxid
+   verifyPoker resolveClaimTx undefined
    writePrettyJson "specs/vectors/txFund.json" fundTx
    writePrettyJson "specs/vectors/txSession.json" startGameTx
    writePrettyJson "specs/vectors/txPlayerPayout.json" playerPayoutTx
-   writePrettyJson "specs/vectors/txPostClaim.json" claimDataTx
+   writePrettyJson "specs/vectors/txPostClaim.json" claimDataTxs
    writePrettyJson "specs/vectors/txResolveClaim.json" resolveClaimTx
    writePrettyJson "specs/vectors/txClaimPayout.json" payoutClaimTx
 ```

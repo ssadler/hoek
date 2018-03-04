@@ -12,8 +12,8 @@ import Control.Monad.Trans.Class as ALL
 import Data.ByteString as ALL (ByteString)
 import Data.ByteString.Lazy as ALL (toStrict)
 import Data.Functor.Identity as ALL
-import Data.List as ALL (elemIndex)
-import Data.Maybe as ALL (fromJust, fromMaybe, mapMaybe)
+import Data.List as ALL (elemIndex, sort)
+import Data.Maybe as ALL (catMaybes, fromJust, fromMaybe, mapMaybe)
 import Data.Monoid as ALL
 import Data.Set as ALL (Set)
 import Data.Text as ALL (Text, unpack)
