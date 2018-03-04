@@ -95,9 +95,7 @@ If you havn't already, this might be a good time to refer to the [transaction ba
 
 JSON: [txSession.json](./vectors/txSession.json)
 
-The **Session** transaction is made on the PANGEA chain, and contains the ID of the **Fund** transaction as a data output. The dealer is expected to hold the PANGEA units neccesary to make this transaction. The dealer also provides outputs that are sufficient for the players to post gamestates in the event of a dispute. An exec output is provided that will trigger an on-chain evaluation a subsequent payout; it includes a delay of a number of blocks before it can be triggered.
-
-Note: Currently, this transaction may or may not be used; in the case that it is not used, it would be good to provide the dealer with a way to recollect the outputs, even though they maybe just amount to dust.
+The **Session** transaction is made on the PANGEA chain, and contains the game parameters (**PokerHeader**). The dealer is expected to hold the PANGEA units neccesary to make this transaction. The dealer also provides outputs that are sufficient for the players to post gamestates in the event of a dispute. An exec output is provided that will trigger an on-chain evaluation a subsequent payout; it includes a delay of a number of blocks before it can be triggered.
 
 ```haskell
 dataFee = 4
@@ -137,12 +135,7 @@ JSON: [txFund.json](./vectors/txFund.json)
 The **Fund** transaction is made on the KMD chain, and uses inputs from each player, and creates a single CryptoCondition output. The output may either be spent by a quorum of the participants (n/2+1 players + dealer), or by a subset of notaries.
 
 ```haskell
--- payout is either ImportPayout or quorum
-
-
-data Fund = Fund
-  { playerInputs :: [TxInput]
-  }
+-- payout is either ImportPayout or multisig between players
 quorumCond = Threshold 2 [ ecCond dealer
                          , Threshold 2 [ ecCond player1, ecCond player2 ] ]
 payoutCond = Threshold 1 [ quorumCond
