@@ -4,18 +4,22 @@ To facilitate participation in off-chain smart contracts on the [Komodo Platform
 
 * [Introduction](#introduction)
    * [Properties](#properties)
-* [Smart Contract Workflow](#smart-contract-workflow)
+* [Contract Security](#contract-security)
 * [Transactions](#transactions)
-   * [Transaction: Fund](#transaction-fund)
    * [Transaction: Session](#transaction-session)
+   * [Transaction: Fund](#transaction-fund)
    * [Transaction: PlayerPayout](#transaction-playerpayout)
    * [Transaction: PostClaim](#transaction-postclaim)
    * [Transaction: ResolveClaim](#transaction-resolveclaim)
-   * [Transaction: ClaimPayout](#transaction-payoutclaim)
+   * [Transaction: ClaimPayout](#transaction-claimpayout)
+* [Chain functions](#chain-functions)
+   * [LockTime](#locktime)
+   * [VerifyPoker](#verifypoker)
+   * [ImportPayout](#importpayout)
+* [Other](#other)
    * [Notary proof format using MOM](#notary-proof-format-using-mom)
-   * [Chain func: LockTime](#chain-func-locktime)
-   * [Chain func: VerifyPoker](#chain-func-verifypoker)
-   * [Chain func: ImportPayout](#chain-func-importpayout)
+* [Missing API methods](#missing-api-methods)
+* [Testing](#testing)
 
 ## Introduction
 
@@ -234,81 +238,13 @@ payoutClaimTx =
       ([ txOutResolveClaim , txOutNotaryProof ] ++ payouts)
 ```
 
-### Notary proof format using MOM
+## Chain functions
 
-The notary proof is neccesary since we are importing a paying vector from another chain. So the notaries are used as an oracle to say that the referenced transaction was accepted by the app-chain.
+Chain functions are on-chain tests encoded as CryptoConditions `Eval` nodes.
 
-App chains of this type will intermittently post notarisations to the value chain (KMD). These notarisations indicate that the block being notarised has some degree of finality, which we are going to accept. The [SPV](https://bitcoin.org/en/glossary/simplified-payment-verification) protocol can be used to verify that a transaction exists in a block. However, not every block is notarised, because app chains may have short block times, so they may only notarise every 100 blocks or so. In this case, in order to support payment verification across chains, the notarisation on KMD will include a **MOM** ("Merkle of Merkles").
+They work by providing a `method`, and a `parameters` payload, which are hashed together as a preimage (or scriptHash) In order to fulfill the condition, the preimage needs to be provided, and `method` is called with the preimage and the transaction as parameters. If the method does not return an error, the condition has passed. Below are the methods required for the Bet protocol:
 
-The MOM is simply a binary [Merkle Tree](https://en.wikipedia.org/wiki/Merkle_tree) where the leaf nodes are all the transaction merkle roots since the last notarisation, and up to and including the block currently being notarised.
-
-Each block contains a transaction merkle root, so if you have the merkle branch and the index of the transaction in he block you can verify that it's there. In this case we concatenate the SPV merkle branch and the MOM merkle branch so it reaches all the way to the MOM:
-
-```haskell
-combineMerkleBranches (posa, brancha) (posb, branchb) =
-    (shiftL posb (length brancha) .|. posa, brancha ++ branchb)
-```
-
-We're not really worried about if or when the block merkle root is encountered. Just that we can use the merkle branch to go from the txid to to the MOM. The merkle branch is a list of node hashes, plus a varint. The bits of the varint correspond to the hashes in the list, and specify whether the node is left or right. Side note: the bits of the varint are actually equivalent to the index of the transaction in the block! Science!!
-
-```haskell
-
-data TxImportProof = TxImportProof
-    TxHash -- Txid of notarisation transaction
-    (Word64, [H.Hash256]) -- Merkle branch to MOM
-
-
-instance Serialize TxImportProof where
-    put (TxImportProof ntxid (pos, branch)) = do
-        put ntxid
-        put $ H.VarInt pos
-        put $ H.VarInt $ fromIntegral $ length branch
-        mapM_ put branch
-    get = do
-        notaryTxid <- get
-        H.VarInt pos <- get
-        H.VarInt branchLen <- get
-        branch <- replicateM (fromIntegral branchLen) get
-        pure $ TxImportProof notaryTxid (pos, branch)
-
-
-getExampleImportProof :: TxHash -> (TxImportProof, H.Hash256)
-getExampleImportProof txid =
-  let (blockId, blockMerkleRoot, blockTxids) = getTxBlock txid
-      (notaryTxid, notarisedMerkleRoots) = getNotarisationTx blockId
-
-      Just txIdx = elemIndex (getTxHash txid) blockTxids
-      txMerkle = getMerkleBranch blockTxids txIdx
-
-      Just blockIdx = elemIndex blockMerkleRoot notarisedMerkleRoots
-      blockMerkle = getMerkleBranch blockMerkleRoots blockIdx
-
-      combinedMerkle = combineMerkleBranches txMerkle blockMerkle
-      proof = TxImportProof notaryTxid combinedMerkle
-      
-      testMom = execMerkleBranch combinedMerkle $ getTxHash txid
-      testProof = if mom == testMom then proof
-                                    else error "mom calculation failed"
-   in (testProof, mom)
-
-  where
-    -- Make up some example data that exports a checkable proof
-    [a, b, c, d, e, f, g] = H.hash256 <$> ["a", "b", "c", "d", "e", "f", "g"::ByteString]
-    blockTxids = [b, c, d, e, d, e, d, e, d, e, d, e, getTxHash txid]
-    blockMerkleRoot = getMerkleRoot blockTxids
-    blockMerkleRoots = [f, g, blockMerkleRoot]
-    mom = getMerkleRoot blockMerkleRoots
-
-    -- Missing API calls
-    getTxBlock _ = (a, blockMerkleRoot, blockTxids)
-    getNotarisationTx _ = (notarisationTxid, blockMerkleRoots)
-
-
-notarisationTxid :: TxHash
-notarisationTxid = "b6ae1346f5923a0566b95a66df253e1f4ab42bda593792cf03bcaa0cc0e8df68"
-```
-
-### Chain func: LockTime
+### LockTime
 
 LockTime is a Crypto-Conditions eval method that specifies an interval in blocks before the condition may be fulfilled, relative to the block height of the condition.
 
@@ -320,7 +256,7 @@ Verifications:
 
 * That the block height of the transaction that contains the LockTime condiiton, plus `nBlocks`, is less than the current block height being mined.
 
-### Chain func: VerifyPoker
+### VerifyPoker
 
 VerifyPoker is a Crypto-Conditions eval method that evaluates a data output against a set of application states. It is fulfilled by **ResolveClaim**.
 
@@ -335,7 +271,7 @@ Verifications:
 1. Valid states are ones that conform to the provided GameHeader 
 1. For each of the posted game states, that the longest valid state produces the exact same binary attached in OP\_RETURN output 0. This is equivalent to the "longest chain wins" rule.
 
-### Chain func: ImportPayout
+### ImportPayout
 
 ImportPayout is a Crypto-Conditons eval method that is used to execute a payout vector from another chain. It is fulfilled by the **ClaimPayout** transaction on KMD chain.
 
@@ -383,10 +319,104 @@ verifyImportPayout (KTx _ outputs) sessionId = do
       getNotaryMom notarTxid =
         if notarTxid == notarisationTxid then mom
                                          else error "wrong notarisationTxid given"
-
 ```
 
-## Test
+## Other
+
+### Notary proof format using MOM
+
+The notary proof is neccesary since we are importing a paying vector from another chain. So the notaries are used as an oracle to say that the referenced transaction was accepted by the app-chain.
+
+App chains of this type will intermittently post notarisations to the value chain (KMD). These notarisations indicate that the block being notarised has some degree of finality, which we are going to accept. The [SPV](https://bitcoin.org/en/glossary/simplified-payment-verification) protocol can be used to verify that a transaction exists in a block. However, not every block is notarised, because app chains may have short block times, so they may only notarise every 100 blocks or so. In this case, in order to support payment verification across chains, the notarisation on KMD will include a **MOM** ("Merkle of Merkles").
+
+The MOM is simply a binary [Merkle Tree](https://en.wikipedia.org/wiki/Merkle_tree) where the leaf nodes are all the transaction merkle roots since the last notarisation, and up to and including the block currently being notarised.
+
+Each block contains a transaction merkle root, so if you have the merkle branch and the index of the transaction in he block you can verify that it's there. In this case we concatenate the SPV merkle branch and the MOM merkle branch so it reaches all the way to the MOM:
+
+```haskell
+combineMerkleBranches (posa, brancha) (posb, branchb) =
+    (shiftL posb (length brancha) .|. posa, brancha ++ branchb)
+```
+
+We're not really worried about if or when the block merkle root is encountered. Just that we can use the merkle branch to go from the txid to to the MOM. The merkle branch is a list of node hashes, plus a varint. The bits of the varint correspond to the hashes in the list, and specify whether the node is left or right. Side note: the bits of the varint are actually equivalent to the index of the transaction in the block! Science!!
+
+```haskell
+
+data TxImportProof = TxImportProof
+    TxHash -- Txid of notarisation transaction
+    (Word64, [H.Hash256]) -- Merkle branch to MOM
+
+
+instance Serialize TxImportProof where
+    put (TxImportProof ntxid (pos, branch)) = do
+        put ntxid
+        put $ H.VarInt pos
+        put $ H.VarInt $ fromIntegral $ length branch
+        mapM_ put branch
+    get = do
+        notaryTxid <- get
+        H.VarInt pos <- get
+        H.VarInt branchLen <- get
+        branch <- replicateM (fromIntegral branchLen) get
+        pure $ TxImportProof notaryTxid (pos, branch)
+
+
+getExampleImportProof :: TxHash -> (TxImportProof, H.Hash256)
+getExampleImportProof txid =
+  let (blockId, blockMerkleRoot, blockTxids) = getTxBlock txid
+      (notaryTxid, notarisedMerkleRoots) = getNotarisationTx "PANGEA" blockId
+
+      Just txIdx = elemIndex (getTxHash txid) blockTxids
+      txMerkle = getMerkleBranch blockTxids txIdx
+
+      Just blockIdx = elemIndex blockMerkleRoot notarisedMerkleRoots
+      blockMerkle = getMerkleBranch blockMerkleRoots blockIdx
+
+      combinedMerkle = combineMerkleBranches txMerkle blockMerkle
+      proof = TxImportProof notaryTxid combinedMerkle
+      
+      testMom = execMerkleBranch combinedMerkle $ getTxHash txid
+      testProof = if mom == testMom then proof
+                                    else error "mom calculation failed"
+   in (testProof, mom)
+
+  where
+    -- Make up some example data that exports a checkable proof
+    [a, b, c, d, e, f, g] = H.hash256 <$> ["a", "b", "c", "d", "e", "f", "g"::ByteString]
+    blockTxids = [b, c, d, e, d, e, d, e, d, e, d, e, getTxHash txid]
+    blockMerkleRoot = getMerkleRoot blockTxids
+    blockMerkleRoots = [f, g, blockMerkleRoot]
+    mom = getMerkleRoot blockMerkleRoots
+
+    getTxBlock _ = (a, blockMerkleRoot, blockTxids)
+    getNotarisationTx _ _ = (notarisationTxid, blockMerkleRoots)
+
+
+notarisationTxid :: TxHash
+notarisationTxid = "b6ae1346f5923a0566b95a66df253e1f4ab42bda593792cf03bcaa0cc0e8df68"
+```
+
+## Missing API methods
+
+**getTxBlock**:
+
+* in: Transaction ID
+* out: block header
+* out: list of transaction IDs in the block
+
+**getNotarisationTxByBlock**:
+
+* in: name of app chain
+* in: block id
+* out: ID of notary tx
+* out: merkle roots notarised in TX
+
+**getNotaryMom**
+
+* in: notary tx id
+* out: MOM for notarised blocks
+
+## Testing
 
 Below is the entry point to execute this document.
 
