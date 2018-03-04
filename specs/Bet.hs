@@ -44,19 +44,14 @@ getMerkleBranch xs pos
     s [] _ = []
     s [l] _ = []
     s leaves idx =
-      let pairs = [0,2..length leaves - 1]
-          combine n =
-            case take 2 (drop n leaves) of
-                 [a,b] -> H.hash2 a b
-                 [a]   -> H.hash2 a a
-          hashes = combine <$> pairs
+      let hashes = hashMerkleLeaves leaves
           newIdx = div idx 2
           side = min (xor idx 1) (length leaves - 1)
        in leaves !! side : s hashes newIdx
 
 
-combineMerklePairs :: [H.Hash256] -> [H.Hash256]
-combineMerklePairs leaves =
+hashMerkleLeaves :: [H.Hash256] -> [H.Hash256]
+hashMerkleLeaves leaves =
   let pairs = [0,2..length leaves - 1]
       combine n =
         case take 2 (drop n leaves) of
@@ -68,7 +63,7 @@ combineMerklePairs leaves =
 getMerkleRoot :: [H.Hash256] -> H.Hash256
 getMerkleRoot [] = error "can't getMerkleRoot of no elements"
 getMerkleRoot [h] = h
-getMerkleRoot leaves = getMerkleRoot $ combineMerklePairs leaves
+getMerkleRoot leaves = getMerkleRoot $ hashMerkleLeaves leaves
 
 
 writePrettyJson :: ToJSON a => FilePath -> a -> IO ()
