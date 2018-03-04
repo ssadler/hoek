@@ -6,12 +6,12 @@ To facilitate participation in off-chain smart contracts on the [Komodo Platform
    * [Properties](#properties)
 * [Contract Security](#contract-security)
 * [Transactions](#transactions)
-   * [Transaction: Session](#transaction-session)
-   * [Transaction: Fund](#transaction-fund)
-   * [Transaction: PlayerPayout](#transaction-playerpayout)
-   * [Transaction: PostClaim](#transaction-postclaim)
-   * [Transaction: ResolveClaim](#transaction-resolveclaim)
-   * [Transaction: ClaimPayout](#transaction-claimpayout)
+   * [Session](#session)
+   * [Fund](#fund)
+   * [PlayerPayout](#playerpayout)
+   * [PostClaim](#postclaim)
+   * [ResolveClaim](#resolveclaim)
+   * [ClaimPayout](#claimpayout)
 * [Chain functions](#chain-functions)
    * [LockTime](#locktime)
    * [VerifyPoker](#verifypoker)
@@ -90,7 +90,7 @@ The below table illustrates:
 
 If you havn't already, this might be a good time to refer to the [transaction basics](./basics.md) document.
 
-### Transaction: Session
+### Session
 
 JSON: [txSession.json](./vectors/txSession.json)
 
@@ -130,7 +130,7 @@ startGameTxid = txHash startGameTxEncoded
 ```
 
 
-### Transaction: Fund
+### Fund
 
 JSON: [txFund.json](./vectors/txFund.json)
 
@@ -163,7 +163,7 @@ fundTx =
 fundTxid = txHash $ signEncode privKeys fundTx
 ```
 
-### Transaction: PlayerPayout
+### PlayerPayout
 
 JSON: [txPlayerPayout.json](./vectors/txPlayerPayout.json)
 
@@ -178,7 +178,7 @@ playerPayoutTx = KTx
   payouts
 ```
 
-### Transaction: PostClaim
+### PostClaim
 
 JSON: [txPostClaim.json](./vectors/txPostClaim.json)
 
@@ -197,7 +197,7 @@ claimDataTxs = [ makeClaimDataTx dealer 0 "win"
                ]
 ```
 
-### Transaction: ResolveClaim
+### ResolveClaim
 
 JSON: [txResolveClaim.json](./vectors/txResolveClaim.json)
 
@@ -215,7 +215,7 @@ Right txResolveClaimEncoded =
 
 ```
 
-### Transaction: ClaimPayout
+### ClaimPayout
 
 JSON: [txClaimPayout.json](./vectors/txClaimPayout.json)
 
