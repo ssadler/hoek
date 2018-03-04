@@ -102,8 +102,9 @@ Note: Currently, this transaction may or may not be used; in the case that it is
 dataFee = 4
 evalFee = 10
 delayBlocks = "some number of blocks"
+
 -- lock time a certain number of blocks so players can post evidence,
--- and require a sig from any participant to initiate Exec
+-- and require a sig from any participant to initiate VerifyPoker
 evalClaimCond = Threshold 3 [ Eval "LockTime" delayBlocks
                             , Eval "VerifyPoker" ""
                             , Threshold 1 [ ecCond dealer
