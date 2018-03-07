@@ -9,8 +9,7 @@ To facilitate participation in off-chain smart contracts on the [Komodo Platform
    * [PlayPoker](#playpoker)
    * [FundOffChain](#fundoffchain)
    * [PlayerPayout](#playerpayout)
-   * [PostClaim](#postclaim)
-   * [ResolveClaim](#resolveclaim)
+   * [PokerClaim](#pokerclaim)
    * [ClaimPayout](#claimpayout)
 * [Chain functions](#chain-functions)
    * [LockTime](#locktime)
@@ -86,7 +85,7 @@ The below table illustrates:
 
 1. [FundOffChain](#fundoffchain) contains [PlayPoker](#playpoker) txid.
 2. If all goes well, players all agree on a [PlayerPayout](#PlayerPayout) (n/2+1+dealer).
-3. Otherwise, players will [post gamestates](#PostClaim).
+3. Otherwise, players will [post gamestates](#PokerClaim).
 4. After a [time interval](#LockTime), any player may [submit a valid claim resolution](#ResolveClaim).
 5. Claim resolution will [verify submitted claims](#VerifyPoker).
 6. Any player may submit a [valid claim payout](#ClaimPayout).
@@ -175,22 +174,22 @@ playerPayoutTx = KTx
   payouts
 ```
 
-### PostClaim
+### PokerClaim
 
-JSON: [txPostClaim.json](./vectors/txPostClaim.json)
+JSON: [txPokerClaim.json](./vectors/txPokerClaim.json)
 
-The **PostClaim** transaction is made on the PANGEA chain. It registers a game state for evaluation, in the case that **PlayerPayout** is not possible for some reason. Each player has the opportunity to perform a **PostClaim** by spending an output of the **PlayPoker** transaction.
+The **PokerClaim** transaction is made on the PANGEA chain. It includes a game state for evaluation, as well as a list of payout vectors encoded in binary format. Each player has the opportunity to perform a **PokerClaim** within a given time window. After that, the longest claim will be selected.
 
 ```haskell
-makePostClaimTx pk idx bin = KTx
+makePokerClaimTx pk idx bin = KTx
   -- Output index depends on who is making the claim
   [ TxInput (OutPoint playPokerTxid idx) (addressScript pk) ]
   -- There is no output amount, the whole input is fees
   [ TxOutput 0 $ CarrierOutput bin ]
 
-postClaimTxs = [ makePostClaimTx dealer 0 "win"
-               , makePostClaimTx player1 1 "cheat"
-               , makePostClaimTx player2 2 "invalid"
+postClaimTxs = [ makePokerClaimTx dealer 0 "win"
+               , makePokerClaimTx player1 1 "cheat"
+               , makePokerClaimTx player2 2 "invalid"
                ]
 ```
 
@@ -485,7 +484,7 @@ main = do
    writePrettyJson "specs/vectors/txFundOffChain.json" fundOffChainTx
    writePrettyJson "specs/vectors/txPlayPoker.json" playPokerTx
    writePrettyJson "specs/vectors/txPlayerPayout.json" playerPayoutTx
-   writePrettyJson "specs/vectors/txPostClaim.json" postClaimTxs
+   writePrettyJson "specs/vectors/txPokerClaim.json" postClaimTxs
    writePrettyJson "specs/vectors/txResolveClaim.json" resolveClaimTx
    writePrettyJson "specs/vectors/txClaimPayout.json" claimPayoutTx
 ```
