@@ -50,7 +50,7 @@
                         {
                             "type": "eval-sha-256",
                             "method": "ImportPayout",
-                            "preimage": "4xmn5U3v6AIZPVCRamj6FYODZmLvVkNuE13gx8jPND4"
+                            "params": "PrIBqI3DkDtMkNdxQ7nHKTrYkPNk-V0x3ar0UpRzvDA"
                         }
                     ]
                 }

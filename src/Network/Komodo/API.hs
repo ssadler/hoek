@@ -15,13 +15,15 @@ import           Lens.Micro
 
 import           Network.Komodo.API.Utils as API
 import           Network.Komodo.API.Tx as API
-import           Network.Komodo.Crypto
+import           Network.Komodo.Crypto as C
 import           Network.Komodo.Prelude
+import           Network.Haskoin.Internals as H
 
 
 methods :: Map.Map String (JsonMethod, String)
 methods = Map.fromList
-  [ ("ed25519KeyPair", (generateKeyPair, "Generate an Ed25519 key pair"))
+  [ ("ed25519KeyPair", (ed25519KeyPair, "Generate an Ed25519 key pair"))
+  , ("secp256k1KeyPair", (secp256k1KeyPair, "Generate an Secp256k1 key pair"))
   , ("encodeTx",       (encodeTx, "Encode a transaction to hex"))
   , ("decodeTx",       (decodeTx, "Decode a transaction from hex"))
   , ("signTxBitcoin",  (signTxBitcoin, "Sign Secp256k1 script inputs"))
@@ -56,10 +58,21 @@ wrapJson = either wrapJsonError wrapSuccess
     wrapJsonError val = object ["error" .= val]
 
 
-generateKeyPair :: JsonMethod
-generateKeyPair _ = do
-  (pk, sk) <- lift genKeyPair
+ed25519KeyPair :: JsonMethod
+ed25519KeyPair _ = do
+  (pk, sk) <- lift genEd25519KeyPair
   return $ object ["public_key" .= pk, "secret_key" .= sk]
+
+
+secp256k1KeyPair :: JsonMethod
+secp256k1KeyPair _ = do
+  sk <- lift $ withSource getEntropy genPrvKey
+  let wif = decodeUtf8 $ toWif sk
+      pk = derivePubKey sk
+  return $ object [ "pubKey" .= pk
+                  , "wif" .= wif
+                  , "addr" .= pubKeyAddr pk
+                  ]
 
 
 showErrorClasses :: JsonMethod

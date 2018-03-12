@@ -3,7 +3,7 @@
         "inputs": [
             {
                 "idx": 0,
-                "txid": "3e34cfc8c7e05d136e4356ef6266838315fa686a91503d1902e8ef4de5a719e3",
+                "txid": "30bc739452f4aadd315df964f390d83a29c7b94371d7904c3b90c38da801b23e",
                 "script": {
                     "address": "RCCtwc9bgpgUGBsJ3g4T2s3W6qpLg1WJ6x"
                 }
@@ -15,14 +15,20 @@
                 "script": {
                     "op_return": "d2lu"
                 }
+            },
+            {
+                "amount": 0,
+                "script": {
+                    "op_return": "AjIAAAAAAAAAGXapFCAYaKYzdb/t8SHAtHCY27iTx+7iiKy2AwAAAAAAABl2qRRw+89TonK/a7TbzEzhY/dnn3jFLois"
+                }
             }
         ]
     },
     {
         "inputs": [
             {
-                "idx": 1,
-                "txid": "3e34cfc8c7e05d136e4356ef6266838315fa686a91503d1902e8ef4de5a719e3",
+                "idx": 0,
+                "txid": "30bc739452f4aadd315df964f390d83a29c7b94371d7904c3b90c38da801b23e",
                 "script": {
                     "address": "RKabR4HsmVU9bKConjm3aGsUfUXrVwDszc"
                 }
@@ -34,14 +40,20 @@
                 "script": {
                     "op_return": "Y2hlYXQ="
                 }
+            },
+            {
+                "amount": 0,
+                "script": {
+                    "op_return": "AwoAAAAAAAAAGXapFCAYaKYzdb/t8SHAtHCY27iTx+7iiKyQAQAAAAAAABl2qRRw+89TonK/a7TbzEzhY/dnn3jFLoisTgIAAAAAAAAZdqkUIN3AyLWUtw4Kxo9yZ6arL0vKm8+IrA=="
+                }
             }
         ]
     },
     {
         "inputs": [
             {
-                "idx": 2,
-                "txid": "3e34cfc8c7e05d136e4356ef6266838315fa686a91503d1902e8ef4de5a719e3",
+                "idx": 0,
+                "txid": "30bc739452f4aadd315df964f390d83a29c7b94371d7904c3b90c38da801b23e",
                 "script": {
                     "address": "RCGyMKx6Lyhpfp4AC4xXbABJu8VXoE7aoh"
                 }
@@ -52,6 +64,12 @@
                 "amount": 0,
                 "script": {
                     "op_return": "aW52YWxpZA=="
+                }
+            },
+            {
+                "amount": 0,
+                "script": {
+                    "op_return": ""
                 }
             }
         ]

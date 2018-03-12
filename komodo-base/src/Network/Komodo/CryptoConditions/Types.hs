@@ -108,7 +108,7 @@ instance ToJSON Condition where
   toJSON (Eval m pre) =
     object $ [ "type" .= String "eval-sha-256"
              , "method" .= m
-             , "preimage" .= toB64 pre
+             , "params" .= toB64 pre
              ]
   toJSON (Secp256k1 pk msig) =
     let encodeSig = toB64 . Data.Serialize.encode . EC.exportCompactSig
@@ -135,8 +135,8 @@ instance FromJSON Condition where
          "threshold-sha-256" ->
               Threshold <$> obj .:- "threshold" <*> obj .:- "subfulfillments"
          "eval-sha-256" -> do
-              let preimage = obj .:- "preimage" >>= fromB64
-              Eval <$> obj .:- "method" <*> preimage
+              let params = obj .:- "params" >>= fromB64
+              Eval <$> obj .:- "method" <*> params
          "secp256k1-sha-256" -> do
               pkData <- obj .:- "publicKey" >>= parseB16
               sigData <- obj .:-? "signature" >>= mapM fromB64

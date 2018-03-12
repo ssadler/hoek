@@ -27,7 +27,7 @@ evalType = CT 15 "eval-sha-256" False "sha-256"
 
 
 evalCost :: Int
-evalCost = 131072
+evalCost = 1048576
 
 
 evalFingerprint :: Method -> Params -> Fingerprint

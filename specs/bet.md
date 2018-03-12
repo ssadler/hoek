@@ -12,7 +12,6 @@ To facilitate participation in off-chain smart contracts on the [Komodo Platform
    * [PokerClaim](#pokerclaim)
    * [ClaimPayout](#claimpayout)
 * [Chain functions](#chain-functions)
-   * [LockTime](#locktime)
    * [VerifyPoker](#verifypoker)
    * [ImportPayout](#importpayout)
 * [Poker VM](#poker-vm)
@@ -21,7 +20,6 @@ To facilitate participation in off-chain smart contracts on the [Komodo Platform
    * [getTxBlock](#gettxblock)
    * [getNotarisationTxByBlock](#getnotarisationtxbyblock)
    * [getNotaryMom](#getnotarymom)
-   * [getTxSpends](#gettxspends)
 * [Testing](#testing)
 
 ## Introduction
@@ -86,10 +84,8 @@ The below table illustrates:
 1. [FundOffChain](#fundoffchain) contains [PlayPoker](#playpoker) txid.
 2. If all goes well, players all agree on a [PlayerPayout](#PlayerPayout) (n/2+1+dealer).
 3. Otherwise, players will [post gamestates](#PokerClaim).
-4. After a [time interval](#LockTime), any player may [submit a valid claim resolution](#ResolveClaim).
-5. Claim resolution will [verify submitted claims](#VerifyPoker).
-6. Any player may submit a [valid claim payout](#ClaimPayout).
-7. Claim payout will [verify a notary proof](#ImportPayout) of resolution.
+4. After a [time interval](#ReplacementWindow), any player may [submit a valid claim payout](#ClaimPayout).
+5. Claim payout will [verify submitted claims](#VerifyPoker).
 
 See the [transaction basics](./basics.md) document for background info.
 
@@ -104,10 +100,8 @@ dataFee = 4
 evalFee = 10
 delayBlocks = "some number of blocks"
 
--- lock time a certain number of blocks so players can post evidence,
--- and require a sig from any participant to initiate VerifyPoker
-evalClaimCond = Threshold 3 [ Eval "LockTime" delayBlocks
-                            , Eval "VerifyPoker" (encode examplePokerHeader)
+-- Require a sig from any participant to initiate VerifyPoker
+evalClaimCond = Threshold 3 [ Eval "VerifyPoker" (encode examplePokerHeader)
                             , Threshold 1 [ ecCond dealer
                                           , ecCond player1
                                           , ecCond player2 ] ]
@@ -178,53 +172,43 @@ playerPayoutTx = KTx
 
 JSON: [txPokerClaim.json](./vectors/txPokerClaim.json)
 
-The **PokerClaim** transaction is made on the PANGEA chain. It includes a game state for evaluation, as well as a list of payout vectors encoded in binary format. Each player has the opportunity to perform a **PokerClaim** within a given time window. After that, the longest claim will be selected.
+The **PokerClaim** transaction is made on the PANGEA chain. It includes a game state for evaluation, as well as a list of payout vectors encoded in binary format. Each player has the opportunity to perform a **PokerClaim** within a time window set by the server. After that, the longest claim will be selected.
 
 ```haskell
-makePokerClaimTx pk idx bin = KTx
+makePokerClaimTx pk gameBin payoutsBin = KTx
   -- Output index depends on who is making the claim
-  [ TxInput (OutPoint playPokerTxid idx) (addressScript pk) ]
+  [ TxInput (OutPoint playPokerTxid 0) (addressScript pk) ]
   -- There is no output amount, the whole input is fees
-  [ TxOutput 0 $ CarrierOutput bin ]
+  [ TxOutput 0 $ CarrierOutput gameBin
+  , TxOutput 0 $ CarrierOutput payoutsBin
+  ]
 
-postClaimTxs = [ makePokerClaimTx dealer 0 "win"
-               , makePokerClaimTx player1 1 "cheat"
-               , makePokerClaimTx player2 2 "invalid"
-               ]
-```
+pokerClaimTxs = [ makePokerClaimTx dealer "win" $ encodePayouts payouts
+                , makePokerClaimTx player1 "cheat" $ encodePayouts cheatPayouts
+                , makePokerClaimTx player2 "invalid" ""
+                ]
 
-### ResolveClaim
-
-JSON: [txResolveClaim.json](./vectors/txResolveClaim.json)
-
-The **ResolveClaim** transaction posts a resolution of the claim, by satisfying **VerifyPoker**. The resulution will be evaluated and the transaction will only be accepted if the claim is correct.
-
-```haskell
-resolveClaimTx =
-  let payoutsBin = encodePayouts payouts
-   in KTx
-      [ TxInput (OutPoint playPokerTxid 0) (ConditionInput evalClaimCond) ]
-      [ TxOutput 0 (CarrierOutput payoutsBin) ]
-
-txResolveClaimEncoded = signEncode privKeys resolveClaimTx
+bestPokerClaimTx = head pokerClaimTxs
+pokerClaimTxEncoded = signEncode privKeys bestPokerClaimTx
+pokerClaimTxid = txHash pokerClaimTxEncoded
 ```
 
 ### ClaimPayout
 
 JSON: [txClaimPayout.json](./vectors/txClaimPayout.json)
 
-The **ClaimPayout** transaction executes a payout vector with reference to a **ResolveClaim** transaction. Only one signature is required to execute it, but it must satisfy the **ImportPayout** verifications.
+The **ClaimPayout** transaction executes a payout vector with reference to a **PokerClaim** transaction. Only one signature is required to execute it, but it must satisfy the **ImportPayout** verifications.
 
 ```haskell
 
-(importProof, mom) = getExampleImportProof $ txHash txResolveClaimEncoded
+(importProof, mom) = getExampleImportProof $ pokerClaimTxid
 
 claimPayoutTx =
-  let txOutResolveClaim = TxOutput 0 $ CarrierOutput $ encode txResolveClaimEncoded
+  let txOutPokerClaim = TxOutput 0 $ CarrierOutput $ encode pokerClaimTxEncoded
       txOutNotaryProof = TxOutput 0 $ CarrierOutput $ encode importProof
    in KTx
       [ TxInput (OutPoint fundOffChainTxid 0) (ConditionInput payoutCond) ]
-      ([ txOutResolveClaim , txOutNotaryProof ] ++ payouts)
+      ([ txOutPokerClaim , txOutNotaryProof ] ++ payouts)
 ```
 
 ## Chain functions
@@ -233,53 +217,29 @@ Chain functions are on-chain tests encoded as CryptoConditions `Eval` nodes.
 
 They work by providing a `method`, and a `parameters` payload, which are hashed together as a preimage (or scriptHash) In order to fulfill the condition, the preimage needs to be provided, and `method` is called with the preimage and the transaction as parameters. If the method does not return an error, the condition has passed. Below are the methods required for the Bet protocol:
 
-### LockTime
-
-LockTime is a Crypto-Conditions eval method that specifies an interval in blocks before the condition may be fulfilled, relative to the block height of the condition.
-
-Parameters:
-
-* `nBlocks`: Number of blocks encoded as a VarInt, via preimage.
-
-Verifications:
-
-* That the block height of the transaction that contains the LockTime condiiton, plus `nBlocks`, is less than the current block height being mined.
-
 ### VerifyPoker
 
-VerifyPoker is a Crypto-Conditions eval method that evaluates a data output against a set of application states. It is fulfilled by **ResolveClaim**.
+VerifyPoker is a Crypto-Conditions eval method that evaluates a data output against a set of application states. It is fulfilled by **PokerClaim**. It also has a special property: it is **replaceable**, that is, for a period of time the server will accept replacement candidates and prirotise the one with the longest valid game state.
 
 Parameters:
 
 * Binary PokerHeader, including: game ID, public keys of participants.
-* Winning output binary, via OP\_RETURN at output 0.
-* List of posted game states, inside OP\_RETURN 0 of spending transactions for each of the parent transaction (**PlayPoker**) outputs starting at output 1.
+* Valid **PokerBody** via OP\_RETURN at output 0.
+* Binary output vectors via OP\_RETURN at output 1.
 
 Verifications:
 
-1. Valid states are ones that conform to the provided PokerHeader 
-1. For each of the posted game states, that the longest valid state produces the exact same binary attached in OP\_RETURN output 0. This is equivalent to the "longest chain wins" rule.
+1. PokerBody fulfills PokerHeader
+2. Execution of PokerHeader and PokerBody produce output vectors supplied in output 1.
 
 ```haskell
 
 verifyPoker :: KTx -> PokerHeader -> IO ()
-verifyPoker (KTx [TxInput (OutPoint sessionId 0) _] outputs) ph = do
-  -- traverse to PlayPoker via Input, then get spent of PlayPoker from position 1
-  sessionSpends <- catMaybes . drop 1 <$> getTxSpends sessionId
-  let gamestates = [bs | KTx _ [TxOutput _ (CarrierOutput bs)] <- sessionSpends]
-  assert "posted gamestates" $ gamestates /= []
-  let results = catMaybes $ pokerVM ph <$> gamestates
-  assert "have valid results" $ results /= []
-  let (_, goodPayouts) = head $ reverse $ sort results
-
-  let givenPayouts = case outputs of
-        [TxOutput _ (CarrierOutput gp)] -> gp
-        _ -> error "output incorrect"
-  assert "given payouts correct" $ givenPayouts == goodPayouts
-
-  where
-    getTxSpends _ = pure $ Nothing : (Just <$> postClaimTxs)
-
+verifyPoker (KTx _ outputs) ph = do
+  let (gamestate, givenPayouts) = case outputs of
+        [TxOutput _ (CarrierOutput pb), TxOutput _ (CarrierOutput gp)] -> (pb, gp)
+        _ -> error "verifyPoker outputs incorrect"
+  assert "gamestate correct" $ pokerVM ph gamestate == Just (20, givenPayouts)
 ```
 
 ### ImportPayout
@@ -289,33 +249,33 @@ ImportPayout is a Crypto-Conditons eval method that is used to execute a payout 
 Parameters:
 
 * ID of **PlayPoker** transaction on PANGEA, via preimage.
-* Complete body of **ResolveClaim** transaction on PANGEA, via OP\_RETURN at output 0.
+* Complete body of **PokerClaim** transaction on PANGEA, via OP\_RETURN at output 0.
 * **TxImportProof** notary proof, via OP\_RETURN at output 1.
 
 Verifications:
 
-1. That the output 0 of the PlayPoker transaction has been spent, by the attached ResolveClaim. This indicates that the attached payout vectors were verified by the app-chain eval function (VerifyPoker).
+1. That the output 0 of the PlayPoker transaction has been spent, by the attached PokerClaim. This indicates that the attached payout vectors were verified by the app-chain eval function (VerifyPoker).
 1. That the notarisation ID included in the TxImportProof points to a transaction signed by notaries.
-1. That the TxImportProof is valid given the txid of the ResolveClaim transaction and the MOM from the notarisation.
-1. That the OP\_RETURN output of the attached ResolveClaim transaction is exactly equal to the outputs in ClaimPayout, not including the attachments (drop the attachments from the list of outputs of ClaimPayout).
+1. That the TxImportProof is valid given the txid of the PokerClaim transaction and the MOM from the notarisation.
+1. That the OP\_RETURN output of the attached PokerClaim transaction is exactly equal to the outputs in ClaimPayout, not including the attachments (drop the attachments from the list of outputs of ClaimPayout).
 
 ```haskell
 verifyImportPayout :: KTx -> TxHash -> IO ()
 verifyImportPayout (KTx _ outputs) sessionId = do
-  let ((TxOutput _ (CarrierOutput bodyResolveClaim)) :
+  let ((TxOutput _ (CarrierOutput bodyPokerClaim)) :
        (TxOutput _ (CarrierOutput bodyImportProof)) :
        payouts) = outputs
 
       (givenPlayPokerId, givenPayouts) =
-        case decodeTxBin bodyResolveClaim of
-          Right (KTx [TxInput (OutPoint gid 0) _] [TxOutput _ (CarrierOutput gp)]) -> (gid, gp)
+        case decodeTxBin bodyPokerClaim of
+          Right (KTx [TxInput (OutPoint gid 0) _] [_, TxOutput _ (CarrierOutput gp)]) -> (gid, gp)
           e -> error $ show e
 
       Right (TxImportProof notarTxid branch) = decode bodyImportProof
       mom = getNotaryMom notarTxid
 
   assert "session id correct" $ sessionId == givenPlayPokerId
-  assert "merkle proof valid" $ execMerkleBranch branch (H.doubleHash256 bodyResolveClaim) == mom
+  assert "merkle proof valid" $ execMerkleBranch branch (H.doubleHash256 bodyPokerClaim) == mom
   assert "payouts match" $ encodePayouts payouts == givenPayouts
   assert "notary tx legit" True  -- can't verify here
 
@@ -466,13 +426,6 @@ Notes: This will likely require a change to the index of notarisations.
 * in: notary tx id
 * out: MOM for notarised blocks
 
-### getTxSpends
-
-* in: txid
-* out: transactions that spend each output or NULL if unspent
-
-Notes: Bitcoin was never designed to do this, in order to do this efficiently we would need some kind of STXO index and no such thing exists as far as I know. Currently it's unclear how to go from a transaction to it's spends because the tree is only linked in one direction ie output -> input.
-
 ## Testing
 
 Below is the entry point to execute this document.
@@ -480,12 +433,11 @@ Below is the entry point to execute this document.
 ```haskell
 main = do
    verifyImportPayout claimPayoutTx playPokerTxid
-   verifyPoker resolveClaimTx examplePokerHeader
+   verifyPoker bestPokerClaimTx examplePokerHeader
    writePrettyJson "specs/vectors/txFundOffChain.json" fundOffChainTx
    writePrettyJson "specs/vectors/txPlayPoker.json" playPokerTx
    writePrettyJson "specs/vectors/txPlayerPayout.json" playerPayoutTx
-   writePrettyJson "specs/vectors/txPokerClaim.json" postClaimTxs
-   writePrettyJson "specs/vectors/txResolveClaim.json" resolveClaimTx
+   writePrettyJson "specs/vectors/txPokerClaim.json" pokerClaimTxs
    writePrettyJson "specs/vectors/txClaimPayout.json" claimPayoutTx
 ```
 

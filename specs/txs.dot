@@ -1,3 +1,5 @@
+// To generate: dot -Tsvg txs.dot -o txs.svg
+
 digraph Txs {
     node [shape=hexagon]
     node [color=green]
@@ -9,10 +11,8 @@ digraph Txs {
     FundOffChain -> PlayerPayout [xlabel=2]
     edge [color=purple]
     PlayPoker -> PostClaim [label=3]
-    PlayPoker -> ResolveClaim [label=4]
-    PostClaim -> ResolveClaim [style=dotted,label=5]
-    FundOffChain -> ClaimPayout [label=6]
-    ResolveClaim -> ClaimPayout [style=dotted,label=7]
+    FundOffChain -> ClaimPayout [label=4]
+    PostClaim -> ClaimPayout [style=dotted,label=5]
     FundOffChain -> PostClaim [color=white]
     {rank = same; ClaimPayout; PlayerPayout; }
 }

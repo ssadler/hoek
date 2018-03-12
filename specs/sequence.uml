@@ -1,3 +1,5 @@
+# to generate: plantuml -tsvg sequence.uml
+
 @startuml
 !pragma teoz true
 skinparam backgroundColor white
@@ -53,12 +55,7 @@ note right: Player posts claim data
 
 Player2 -> PANGEA: PostClaim
 & Dealer -> PANGEA: PostClaim
-note left: Everyone posts claim data until\nResolveClaim LockTime releases
-
-Player1 -> PANGEA: ResolveClaim
-& Player2 -> PANGEA: ResolveClaim
-& Dealer -> PANGEA: ResolveClaim
-note left: Everyone posts claim resolution\nOnly correct resolution accepted
+note left: Everyone posts claim data, best claim is selected by server
 deactivate PANGEA
 
 Notary -> KMD: notarize
