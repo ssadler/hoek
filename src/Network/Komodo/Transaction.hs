@@ -62,6 +62,8 @@ toHaskoinOutput (TxOutput amount script) = H.TxOut amount $
       encode $ H.encodeOutput $ H.addressToOutput addr
     (CarrierOutput bs) ->
       encode $ H.encodeOutput $ H.DataCarrier bs
+    (PubKeyOutput pk) ->
+      encode $ H.encodeOutput $ H.PayPK pk
     (ScriptOutput s) ->
       s
 

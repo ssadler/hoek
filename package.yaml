@@ -23,6 +23,7 @@ dependencies:
 - aeson
 - aeson-pretty
 - attoparsec
+- base16-bytestring
 - base58-bytestring
 - base64-bytestring
 - bytestring
