@@ -50,6 +50,13 @@ signTxBitcoin = pureMethod $ \obj -> do
   keys <- obj .: "privateKeys" >>= mapM parseBitcoinWif
   pure $ toJSON <$> TX.signTxBitcoin keys ktx
 
+signTx :: JsonMethod
+signTx = pureMethod $ \obj -> do
+  ktx <- obj .: "tx"
+  keys <- obj .: "privateKeys" >>= mapM parseBitcoinWif
+  let act = TX.signTxSecp256k1 keys ktx >>= TX.signTxBitcoin keys
+  pure $ toJSON <$> act
+
 
 parseBitcoinWif :: Text -> Parser Haskoin.PrvKey
 parseBitcoinWif txt =

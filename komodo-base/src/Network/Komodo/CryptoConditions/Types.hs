@@ -31,7 +31,7 @@ data Condition =
   | Threshold Word16 [Condition]
   | Ed25519 Ed2.PublicKey (Maybe Ed2.Signature)
   | Secp256k1 EC.PubKey (Maybe EC.Sig)
-  | Eval Method Params
+  | Eval Code
   | Anon Int Fingerprint Int (Set.Set ConditionType)
   deriving (Show, Eq)
 
@@ -46,26 +46,26 @@ instance IsCondition Condition where
   getType (Ed25519 _ _) = ed25519Type
   getType (Preimage _) = preimageType
   getType (Secp256k1 _ _) = secp256k1Type
-  getType (Eval _ _) = evalType
+  getType (Eval _) = evalType
 
   getCost (Threshold t subs) = thresholdCost t subs
   getCost (Ed25519 _ _) = ed25519Cost
   getCost (Preimage pre) = preimageCost pre
-  getCost (Eval _ _) = evalCost
+  getCost (Eval _) = evalCost
   getCost (Secp256k1 _ _) = secp256k1Cost
   getCost (Anon _ _ c _) = c
 
   getFingerprint (Threshold t subs) = thresholdFingerprint t subs
   getFingerprint (Ed25519 pk _) = ed25519Fingerprint pk
   getFingerprint (Preimage pre) = preimageFingerprint pre
-  getFingerprint (Eval m pre) = evalFingerprint m pre
+  getFingerprint (Eval code) = evalFingerprint code
   getFingerprint (Secp256k1 pk _) = secp256k1Fingerprint pk
   getFingerprint (Anon _ fp _ _) = fp
 
   getFulfillmentASN (Threshold t subs) = thresholdFulfillmentASN t subs
   getFulfillmentASN (Ed25519 pk msig) = ed25519FulfillmentASN pk <$> msig
   getFulfillmentASN (Preimage pre) = Just $ preimageFulfillmentASN pre
-  getFulfillmentASN (Eval m pre) =  Just $ evalFulfillmentASN m pre
+  getFulfillmentASN (Eval code) =  Just $ evalFulfillmentASN code
   getFulfillmentASN (Secp256k1 pk msig) = secp256k1FulfillmentASN pk <$> msig
   getFulfillmentASN (Anon _ _ _ _) = Nothing
 
@@ -83,7 +83,7 @@ instance IsCondition Condition where
   verifyMessage (Threshold m subs) = verifyThreshold m subs
   verifyMessage (Ed25519 pk (Just sig)) = verifyEd25519 pk sig
   verifyMessage (Secp256k1 pk (Just sig)) = verifySecp256k1 pk sig
-  verifyMessage (Eval m pre) = verifyEval m pre
+  verifyMessage (Eval code) = verifyEval code
   verifyMessage _ = const False
 
   anon t f c = Anon t f c . toConditionTypes
@@ -105,10 +105,9 @@ instance ToJSON Condition where
            , "threshold" .= n
            , "subfulfillments" .= (toJSON <$> subs)
            ]
-  toJSON (Eval m pre) =
+  toJSON (Eval code) =
     object $ [ "type" .= String "eval-sha-256"
-             , "method" .= m
-             , "params" .= toB64 pre
+             , "code" .= toB64 code
              ]
   toJSON (Secp256k1 pk msig) =
     let encodeSig = toB64 . Data.Serialize.encode . EC.exportCompactSig
@@ -135,8 +134,8 @@ instance FromJSON Condition where
          "threshold-sha-256" ->
               Threshold <$> obj .:- "threshold" <*> obj .:- "subfulfillments"
          "eval-sha-256" -> do
-              let params = obj .:- "params" >>= fromB64
-              Eval <$> obj .:- "method" <*> params
+              let code = obj .:- "code" >>= fromB64
+              Eval <$> code
          "secp256k1-sha-256" -> do
               pkData <- obj .:- "publicKey" >>= parseB16
               sigData <- obj .:-? "signature" >>= mapM fromB64

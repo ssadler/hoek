@@ -28,7 +28,8 @@ methods = Map.fromList
   , ("decodeTx",       (decodeTx, "Decode a transaction from hex"))
   , ("signTxBitcoin",  (signTxBitcoin, "Sign Secp256k1 script inputs"))
   , ("signTxEd25519",  (signTxEd25519, "Sign Ed25519 condition nodes"))
-  , ("signTxSecp256k1",  (signTxSecp256k1, "Sign Secp256k1 condition nodes"))
+  , ("signTxSecp256k1", (signTxSecp256k1, "Sign Secp256k1 condition nodes"))
+  , ("signTx",         (API.signTx, "Sign tx secp256k1, cc and script input"))
   , ("decodeScript",   (decodeScript, "Decode a script"))
   ]
 

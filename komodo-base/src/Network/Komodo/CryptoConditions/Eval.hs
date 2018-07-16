@@ -12,8 +12,7 @@ import           Network.CryptoConditions.Impl
 import           Network.CryptoConditions.Encoding
 
 
-type Method = Text
-type Params = ByteString
+type Code = ByteString
 type Entropy = ByteString
 
 
@@ -30,21 +29,20 @@ evalCost :: Int
 evalCost = 1048576
 
 
-evalFingerprint :: Method -> Params -> Fingerprint
-evalFingerprint method condEval =
-  hashASN $ asnSequence Sequence $ asnData [encodeUtf8 method, condEval]
+evalFingerprint :: Code -> Fingerprint
+evalFingerprint condEval =
+  hashASN $ asnSequence Sequence $ asnData [condEval]
 
 
-evalFulfillmentASN :: Method -> Params -> [ASN1]
-evalFulfillmentASN method params =
-  asnChoice 15 $ asnData [encodeUtf8 method, params]
+evalFulfillmentASN :: Code -> [ASN1]
+evalFulfillmentASN params = asnChoice 15 $ asnData [params]
 
 
-parseEval :: (Method -> Params -> c) -> ParseASN1 c
+parseEval :: (Code -> c) -> ParseASN1 c
 parseEval construct = do
-  construct <$> (decodeUtf8 <$> parseOther 0) <*> parseOther 1
+  construct <$> parseOther 0
 
 
-verifyEval :: Method -> Params -> Message -> Bool
-verifyEval _ _ _ = True
+verifyEval :: Code -> Message -> Bool
+verifyEval _ _ = True
 
