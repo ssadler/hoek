@@ -16,6 +16,9 @@ import           Network.Komodo.Crypto
 import           Network.Komodo.Prelude
 import qualified Network.Komodo.Transaction as TX
 
+import           Network.Komodo.CryptoConditions
+
+
 
 encodeTx :: JsonMethod
 encodeTx = pureMethod $ \ktx ->
@@ -78,3 +81,8 @@ decodeScript = pureMethod $ \obj -> do
   (Haskoin.Script ops) <- either fail pure $ Data.Serialize.decode scriptBs
   pure $
     pure $ object ["ops" .= (show <$> ops), "isPushOnly" .= all Haskoin.isPushOp ops]
+
+
+encodeConditionJSON :: JsonMethod
+encodeConditionJSON = pureMethod $ \cond -> do
+  pure $ pure $ toJsonAnon (cond :: Condition)

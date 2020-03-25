@@ -4,6 +4,7 @@
 module Network.Komodo.CryptoConditions.Types (
     module IE
   , Condition(..)
+  , toJsonAnon
   ) where
 
 import qualified Crypto.PubKey.Ed25519 as Ed2

@@ -22,16 +22,17 @@ import           Network.Haskoin.Internals as H
 
 methods :: Map.Map String (JsonMethod, String)
 methods = Map.fromList
-  [ ("ed25519KeyPair", (ed25519KeyPair, "Generate an Ed25519 key pair"))
+  [ ("ed25519KeyPair",   (ed25519KeyPair, "Generate an Ed25519 key pair"))
   , ("secp256k1KeyPair", (secp256k1KeyPair, "Generate an Secp256k1 key pair"))
-  , ("encodeTx",       (encodeTx, "Encode a transaction to hex"))
-  , ("decodeTx",       (decodeTx, "Decode a transaction from hex"))
-  , ("getTxid",        (getTxid, "Get a transaction ID"))
-  , ("signTxBitcoin",  (signTxBitcoin, "Sign Secp256k1 script inputs"))
-  , ("signTxEd25519",  (signTxEd25519, "Sign Ed25519 condition nodes"))
-  , ("signTxSecp256k1", (signTxSecp256k1, "Sign Secp256k1 condition nodes"))
-  , ("signTx",         (API.signTx, "Sign tx secp256k1, cc and script input"))
-  , ("decodeScript",   (decodeScript, "Decode a script"))
+  , ("encodeTx",         (encodeTx, "Encode a transaction to hex"))
+  , ("decodeTx",         (decodeTx, "Decode a transaction from hex"))
+  , ("getTxid",          (getTxid, "Get a transaction ID"))
+  , ("signTxBitcoin",    (signTxBitcoin, "Sign Secp256k1 script inputs"))
+  , ("signTxEd25519",    (signTxEd25519, "Sign Ed25519 condition nodes"))
+  , ("signTxSecp256k1",  (signTxSecp256k1, "Sign Secp256k1 condition nodes"))
+  , ("signTx",           (API.signTx, "Sign tx secp256k1, cc and script input"))
+  , ("decodeScript",     (decodeScript, "Decode a script"))
+  , ("encodeCondition",  (encodeConditionJSON, "Encode a Crypto-Conditions condition"))
   ]
 
 
@@ -75,6 +76,7 @@ secp256k1KeyPair _ = do
                   , "wif" .= wif
                   , "addr" .= pubKeyAddr pk
                   ]
+
 
 
 showErrorClasses :: JsonMethod
