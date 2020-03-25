@@ -26,6 +26,7 @@ methods = Map.fromList
   , ("secp256k1KeyPair", (secp256k1KeyPair, "Generate an Secp256k1 key pair"))
   , ("encodeTx",       (encodeTx, "Encode a transaction to hex"))
   , ("decodeTx",       (decodeTx, "Decode a transaction from hex"))
+  , ("getTxid",        (getTxid, "Get a transaction ID"))
   , ("signTxBitcoin",  (signTxBitcoin, "Sign Secp256k1 script inputs"))
   , ("signTxEd25519",  (signTxEd25519, "Sign Ed25519 condition nodes"))
   , ("signTxSecp256k1", (signTxSecp256k1, "Sign Secp256k1 condition nodes"))

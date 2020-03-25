@@ -30,6 +30,12 @@ decodeTx = pureMethod $ \obj -> do
   pure $ toJSON <$> TX.decodeTx tx
 
 
+getTxid :: JsonMethod
+getTxid = pureMethod $ \obj -> do
+  tx <- obj .: "hex"
+  pure $ pure $ toJSON $ txHash tx
+
+
 signTxEd25519 :: JsonMethod
 signTxEd25519 = pureMethod $ \obj -> do
   ktx <- obj .: "tx"
@@ -42,7 +48,6 @@ signTxSecp256k1 = pureMethod $ \obj -> do
   ktx <- obj .: "tx"
   keys <- obj .: "privateKeys" >>= mapM parseBitcoinWif
   pure $ toJSON <$> TX.signTxSecp256k1 keys ktx
-
 
 signTxBitcoin :: JsonMethod
 signTxBitcoin = pureMethod $ \obj -> do
