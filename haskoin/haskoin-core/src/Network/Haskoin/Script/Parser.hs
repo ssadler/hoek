@@ -315,7 +315,7 @@ encodeSimpleInput s = Script $ case s of
 
 decodeSimpleInput :: Script -> Either String SimpleInput
 decodeSimpleInput (Script ops) =
-    maybeToEither errMsg $ matchPK ops <|> matchPKHash ops <|> matchMulSig ops
+    maybeToEither errMsg $ matchPK ops <|> matchPKHash ops <|> matchCondition ops <|> matchMulSig ops
   where
     matchPK [OP_PUSHDATA bs _] = SpendPK <$> eitherToMaybe (decodeSig bs)
     matchPK _                  = Nothing
@@ -325,6 +325,8 @@ decodeSimpleInput (Script ops) =
             (eitherToMaybe $ decodeSig sig)
             (eitherToMaybe $ decode pub)
     matchPKHash _ = Nothing
+    matchCondition [OP_PUSHDATA bs _] =
+      either (const Nothing) (Just . SpendCondition) $ decodeFulfillment bs
     matchMulSig (x:xs) = do
         guard $ isPushOp x
         SpendMulSig <$> foldrM f [] xs

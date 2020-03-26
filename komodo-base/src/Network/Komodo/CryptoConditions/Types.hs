@@ -7,12 +7,17 @@ module Network.Komodo.CryptoConditions.Types (
   , toJsonAnon
   ) where
 
+import           Control.Applicative ((<|>))
 import qualified Crypto.PubKey.Ed25519 as Ed2
 import qualified Crypto.Secp256k1 as EC
 
 import           Data.Aeson
+import qualified Data.Attoparsec.Text as A
+import qualified Data.ByteString.Base16 as B16
 import           Data.Serialize
 import qualified Data.Set as Set
+import           Data.Text (Text)
+import           Data.Text.Encoding (encodeUtf8)
 import           Data.Word
 
 import qualified Network.CryptoConditions as CC
@@ -96,49 +101,90 @@ toConditionTypes = Set.map $
 
 
 instance ToJSON Condition where
-  toJSON (Ed25519 pk msig) =
-    let sig = maybe [] (\s -> ["signature" .= Sig s]) msig
-     in object $ [ "type" .= ("ed25519-sha-256" :: String)
-                 , "publicKey" .= PK pk
-                 ] ++ sig
-  toJSON (Threshold n subs) =
-    object [ "type" .= String "threshold-sha-256"
-           , "threshold" .= n
-           , "subfulfillments" .= (toJSON <$> subs)
-           ]
-  toJSON (Eval code) =
-    object $ [ "type" .= String "eval-sha-256"
-             , "code" .= toB64 code
-             ]
-  toJSON (Secp256k1 pk msig) =
-    let encodeSig = toB64 . Data.Serialize.encode . EC.exportCompactSig
-        sig = maybe [] (\s -> ["signature" .= encodeSig s]) msig
-    in object $ [ "type" .= (String "secp256k1-sha-256")
-                , "publicKey" .= toB16 (EC.exportPubKey True pk)
-                ] ++ sig
-  toJSON cond@(Anon _ _ _ _) =
-    object [ "type" .= ("condition" :: String)
-           , "uri" .= getConditionURI cond
-           ]
+  toJSON cond =
+    object $ ( "type" .= typeName (getType cond) ) : f cond
+    where
+    f (Ed25519 pk msig) =
+      let sig = maybe [] (\s -> ["signature" .= Sig s]) msig
+       in [ "publicKey" .= PK pk ] ++ sig
+    f (Threshold n subs) =
+      [ "threshold" .= n
+      , "subfulfillments" .= (toJSON <$> subs)
+      ]
+    f (Eval code) = [ "code" .= toB16 code ]
+    f (Secp256k1 pk msig) =
+      let encodeSig = toB64 . Data.Serialize.encode . EC.exportCompactSig
+          sig = maybe [] (\s -> ["signature" .= encodeSig s]) msig
+      in [ "publicKey" .= toB16 (EC.exportPubKey True pk)
+         ] ++ sig
+    f cond@(Anon _ _ _ _) = [ "uri" .= getConditionURI cond ]
 
 
 instance FromJSON Condition where
   parseJSON = withStrictObject "condition" $ \obj -> do
     condType <- obj .:- "type"
-    case condType of
-         "ed25519-sha-256" -> do
-              PK pk <- obj .:- "publicKey"
-              msig <- obj .:-? "signature"
-              pure $ Ed25519 pk $ 
-                case msig of (Just (Sig s)) -> Just s
-                             Nothing -> Nothing
-         "threshold-sha-256" ->
-              Threshold <$> obj .:- "threshold" <*> obj .:- "subfulfillments"
-         "eval-sha-256" -> do
-              let code = obj .:- "code" >>= fromB64
-              Eval <$> code
-         "secp256k1-sha-256" -> do
-              pkData <- obj .:- "publicKey" >>= parseB16
-              sigData <- obj .:-? "signature" >>= mapM fromB64
-              makeSecp256k1 Secp256k1 pkData sigData
-         _ -> fail ("Unsupported condition type: " ++ condType)
+    muri <- obj .:-? "uri"
+
+    case muri of
+      Just uri -> do
+        case parseConditionUri uri of
+          Nothing -> fail "Could not parse condition URI"
+          Just cond -> pure cond
+
+      Nothing ->
+        case condType of
+             "ed25519-sha-256" -> do
+                  PK pk <- obj .:- "publicKey"
+                  msig <- obj .:-? "signature"
+                  pure $ Ed25519 pk $ 
+                    case msig of (Just (Sig s)) -> Just s
+                                 Nothing -> Nothing
+             "threshold-sha-256" ->
+                  Threshold <$> obj .:- "threshold" <*> obj .:- "subfulfillments"
+             "eval-sha-256" -> do
+                  let code = obj .:- "code" >>= fromB16
+                  Eval <$> code
+             "secp256k1-sha-256" -> do
+                  pkData <- obj .:- "publicKey" >>= parseB16
+                  sigData <- obj .:-? "signature" >>= mapM fromB64
+                  makeSecp256k1 Secp256k1 pkData sigData
+             _ -> fail ("Unsupported condition type: " ++ condType)
+
+    where
+      fromB16 s = case B16.decode (encodeUtf8 s) of (r,"") -> pure r
+                                                    _      -> fail "Invalid b16"
+
+
+lookupTypeByName :: Text -> Maybe ConditionType
+lookupTypeByName "ed25519-sha-256"   = Just ed25519Type
+lookupTypeByName "threshold-sha-256" = Just thresholdType
+lookupTypeByName "eval-sha-256"      = Just evalType
+lookupTypeByName "secp256k1-sha-256" = Just secp256k1Type
+lookupTypeByName                   _ = Nothing
+
+
+
+parseConditionUri :: Text -> Maybe Condition
+parseConditionUri = do
+  r <- A.parseOnly parser
+  pure $ either (const Nothing) Just r
+  where
+  parser = do
+    "ni:///sha-256;"
+    hash <- A.takeWhile (/='?') >>= fromB64
+    "?fpt="
+    name <- lookupTypeByName <$> A.takeWhile (/='&')
+    ct <- case name of Nothing -> fail "Unknown condition type"
+                       Just c -> pure c
+    "&cost="
+    cost <- A.decimal
+    subtypes <- (A.endOfInput *> mempty) <|> parseSubtypes
+    pure $ anon (typeId ct) hash cost subtypes
+  parseSubtypes = do
+    "&subtypes="
+    names <- A.sepBy1 (A.takeWhile (/=',')) ","
+    case mapM lookupTypeByName names of
+      Nothing -> fail "Invalid subtypes"
+      Just ids -> pure $ Set.fromList $ typeId <$> ids
+
+

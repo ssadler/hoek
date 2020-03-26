@@ -78,7 +78,18 @@ decodeTx tx = do
 
 
 fromHaskoinInput :: H.TxIn -> Except Err TxInput
-fromHaskoinInput (H.TxIn op script _) = pure $ TxInput op $ ScriptInput script
+fromHaskoinInput (H.TxIn op script _) = -- pure $ TxInput op $ ScriptInput script
+  TxInput op <$>
+    case H.decodeInputBS script of
+      Left err -> throwE $ otherErr err
+      Right si -> convertScriptInput si
+
+convertScriptInput :: H.ScriptInput -> Except Err InputScript
+convertScriptInput (H.RegularInput (H.SpendPKHash sig key)) =
+  pure $ AddressInput $ H.pubKeyAddr key
+convertScriptInput (H.RegularInput (H.SpendCondition cond)) =
+  pure $ ConditionInput cond
+convertScriptInput si = throwE $ otherErr $ "Cannot decode input: " ++ show si
 
 
 fromHaskoinOutput :: H.TxOut -> Except Err TxOutput
